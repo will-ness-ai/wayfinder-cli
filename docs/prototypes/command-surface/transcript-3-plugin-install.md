@@ -35,7 +35,6 @@ skills[9]{id,origin,children,description}:
   wayfinder,core,,"Plan a huge chunk of work — more than one agent session can hold…"
   [... seven more core rows, as in transcript 1 ...]
   grilling-frontend-prototyping,plugin:wayfinder-plugin-frontend-prototyping,,"Converge on a frontend look through rounds of prototypes and grilling verdicts…"
-context: tracker=github(project) extensions=0 plugins=1
 
 $ wayfinder skill grilling-frontend-prototyping
 # Grilling frontend prototyping
@@ -56,6 +55,7 @@ host skill's render.
 $ git clone https://github.com/acme/checkout && cd checkout
 $ wayfinder init
 ✔ Installed plugin wayfinder-plugin-frontend-prototyping @ 4f2c9e1 (from project config)
+✔ Harnesses: claude (from project config)
 ✔ Wrote .claude/skills/wayfinder/SKILL.md (command map: 9 skills)
 Tracker: github (project)
 ```
