@@ -9,41 +9,44 @@ surface it must fit into.)
 
 ```
 $ wayfinder plugin add https://github.com/acme/wayfinder-plugin-frontend-prototyping
-Cloned wayfinder-plugin-frontend-prototyping @ 4f2c9e1 (pinned)
+✔ Cloned wayfinder-plugin-frontend-prototyping @ 4f2c9e1 (pinned)
 Plugin provides 1 skill:
   grilling-frontend-prototyping — Converge on a frontend look through rounds of
   prototypes and grilling verdicts.
-Enabled for this project (.wayfinder/config.json)
-Re-synced stubs: wrote .claude/skills/grilling-frontend-prototyping/SKILL.md
+✔ Enabled for this project (.wayfinder/config.json)
+✔ Re-synced the stub's command map (+ grilling-frontend-prototyping)
 ```
 
-The pin (URL + commit SHA) is what lands in config, so a teammate's `wayfinder init` on a
-fresh clone reproduces the same plugin content:
+Run bare in a TTY, `wayfinder plugin add` opens the same kind of form as `ext add`
+(URL input, scope select). The pin (URL + commit SHA) is what lands in config, so a
+teammate's `wayfinder init` on a fresh clone reproduces the same plugin content:
 
 ```
 $ wayfinder plugin list
-NAME                                    PINNED   SKILLS  SCOPE
-wayfinder-plugin-frontend-prototyping   4f2c9e1  1       project
+plugins[1]{name,pinned,skills,scope}:
+  wayfinder-plugin-frontend-prototyping,4f2c9e1,1,project
 ```
 
 ## 2. The plugin skill is served like any other
 
 ```
 $ wayfinder skills
-NAME                           ORIGIN                                       DESCRIPTION
-wayfinder                      core                                         Plan a huge chunk of work — more…
-grilling                       core                                         Grill the user relentlessly abou…
-[... six more core skills ...]
-grilling-frontend-prototyping  plugin:wayfinder-plugin-frontend-prototyping Converge on a frontend look thro…
-
-9 skills · tracker: github (project) · 0 extensions · 1 plugin
+skills[9]{id,origin,children,description}:
+  wayfinder,core,,"Plan a huge chunk of work — more than one agent session can hold…"
+  [... seven more core rows, as in transcript 1 ...]
+  grilling-frontend-prototyping,plugin:wayfinder-plugin-frontend-prototyping,,"Converge on a frontend look through rounds of prototypes and grilling verdicts…"
+context: tracker=github(project) extensions=0 plugins=1
 
 $ wayfinder skill grilling-frontend-prototyping
 # Grilling frontend prototyping
 
-[... rendered plugin skill; tracker prose and pointers rendered with the same pipeline
-as core skills ...]
+[... rendered plugin skill; tracker prose, children blocks, and pointers rendered with
+the same pipeline as core skills ...]
 ```
+
+There is no per-skill stub for it — the single-stub decision holds. Sessions reach it
+through the stub's command map, through `wayfinder skills`, or through a pointer in a
+host skill's render.
 
 ## 3. Teammate on a fresh clone
 
@@ -52,8 +55,8 @@ as core skills ...]
 ```
 $ git clone https://github.com/acme/checkout && cd checkout
 $ wayfinder init
-Installed plugin wayfinder-plugin-frontend-prototyping @ 4f2c9e1 (from project config)
-Wrote 9 stub skills to .claude/skills/
+✔ Installed plugin wayfinder-plugin-frontend-prototyping @ 4f2c9e1 (from project config)
+✔ Wrote .claude/skills/wayfinder/SKILL.md (command map: 9 skills)
 Tracker: github (project)
 ```
 
@@ -61,6 +64,6 @@ Tracker: github (project)
 
 ```
 $ wayfinder plugin remove wayfinder-plugin-frontend-prototyping
-Removed plugin (project scope) and its 1 skill
-Re-synced stubs: deleted .claude/skills/grilling-frontend-prototyping/SKILL.md
+✔ Removed plugin (project scope) and its 1 skill
+✔ Re-synced the stub's command map (- grilling-frontend-prototyping)
 ```
