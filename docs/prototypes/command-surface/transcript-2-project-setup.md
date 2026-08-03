@@ -11,30 +11,38 @@ TTY, and flags for agents and scripts.
 $ wayfinder init
 wayfinder init — install the entry point into this project
 
-? Tracker for this project  (global default: local)
-  ❯ github
-    gitlab
-    local
-    keep the global default
+? Install the stub into which harnesses?  (space to toggle, enter to confirm)
+  ◉ claude — .claude/skills/   (detected in this repo)
+  ◯ agents — .agents/skills/
 
+? Tracker for this project
+  ❯ local   (your global default)
+    github
+    gitlab
+    jira
+    linear
+    custom — point at your own tracker doc
+
+✔ Harnesses: claude
 ✔ Tracker: github → .wayfinder/config.json (project scope)
 ✔ Wrote .claude/skills/wayfinder/SKILL.md  (the single stub — the only file the CLI
-  ever installs into the harness)
+  ever installs into a harness)
 ✔ Created .wayfinder/config.json (project scope)
 ✔ Added .wayfinder/local.json to .gitignore
 
 Next: have your agent run `wayfinder skill wayfinder`
 ```
 
-The stub's full content is shown in [transcript 1](transcript-1-agent-session.md): an
-introduction pointing at `wayfinder skill wayfinder` as the starting point, plus a
-generated command map of every served skill between `wayfinder:index` markers.
+Harnesses are an abstraction — install targets addressed by id (`claude`, `agents`), with
+detection marking what the repo already uses. Adding support for a new harness later adds
+an id to this select; the surface does not change. The stub's full content is shown in
+[transcript 1](transcript-1-agent-session.md).
 
-`init` is idempotent: re-running it repairs the stub against the current config and
+`init` is idempotent: re-running it repairs the stubs against the current config and
 reports a diff instead of failing. It never writes per-skill stubs, so originals the
 developer keeps installed (their own to-spec, to-tickets, …) are never touched.
 
-Flag form for scripts: `wayfinder init --tracker github`.
+Flag form for scripts: `wayfinder init --harness claude,agents --tracker github`.
 
 ## 2. Tracker config
 
@@ -47,25 +55,37 @@ sources[2]{scope,file,value,effective}:
 note: no repo sniffing — the tracker is only ever what config says
 ```
 
-`tracker set gitlab` would rewrite project config only. It does not touch the stub:
-renders are fetched live, so a tracker change needs no stub change.
+Built-ins: `github | gitlab | jira | linear | local`. A team with its own workflow points
+at its own tracker doc instead — a repo-relative markdown file in the tracker-doc format
+(operations plus a "Wayfinding operations" section):
+
+```
+$ wayfinder tracker set custom --doc ./docs/trackers/acme-flow.md
+✔ Tracker: custom (./docs/trackers/acme-flow.md) → .wayfinder/config.json (project scope)
+```
+
+`tracker set` rewrites config only. It does not touch the stubs: renders are fetched
+live, so a tracker change needs no stub change.
 
 ## 3. Extension-skill CRUD — interactive
 
 The team has a house skill for pre-mortems and wants it offered during charting. Run bare,
-`ext add` opens a form. (Fields are illustrative — the registration schema is its own
-upcoming decision; this transcript fixes only the surface.)
+`ext add` opens a form:
 
 ```
 $ wayfinder ext add
-wayfinder ext add — register an extension skill
+wayfinder ext add — serve an extension skill and offer it on a host
 
-? Name                    › pre-mortem
-? Source path             › ./skills/pre-mortem
+? Source directory        › ./skills/pre-mortem
+  ✔ Found SKILL.md: "pre-mortem" — Surface killer risks before a decision locks in.
+? Serve under id          › pre-mortem   (from the source's frontmatter; edit only on collision)
 ? Host skill                (select)  ❯ wayfinder
-? Offered during            (select)  ❯ charting
-? Relation to the default   (select)  ❯ and — alongside it
+? Offered during            (select)  ❯ charting        (the host's phase: charting | working)
+? Relation to the default   (select)  ❯ and — offered alongside the default grilling
+                                        instead — replaces the default for matching tickets
 ? Fires when              › charting surfaces a risky, hard-to-reverse decision
+    One sentence, written by you. It is rendered into the host skill and tells the
+    agent when to fetch this extension — sharp conditions fire reliably, vague ones don't.
 ? Scope                     (select)  ❯ project (.wayfinder/config.json)
 
 ✔ Registered extension "pre-mortem" (project scope)
@@ -73,25 +93,47 @@ wayfinder ext add — register an extension skill
 Rendered `wayfinder skill wayfinder` now offers pre-mortem at its charting extension point.
 ```
 
+What the fields mean (the full field set is the extension-schema grill's decision — this
+transcript fixes only the surface):
+
+- **Source** — the CLI is a content server; an extension is content it does not ship. The
+  source is a directory holding the skill's `SKILL.md`; the CLI serves it rendered through
+  the same pipeline as core skills.
+- **Id** — derived from the source's frontmatter name; editable only for collisions.
+- **Host / offered during** — which served skill offers it, and in which of that host's
+  phases.
+- **Relation** — `and` offers it alongside the default for that moment; `instead` replaces
+  the default.
+- **Fires when** — becomes the pointer sentence in the host's render; the registrant
+  writes it, because pointer wording is what makes a pointer fire reliably.
+
 ## 4. The same registration, driven by an agent
 
+A missing flag never falls back to the form outside a TTY — it fails with a usage error
+that teaches:
+
 ```
-$ wayfinder ext add pre-mortem \
-    --source ./skills/pre-mortem \
-    --host wayfinder --during charting \
-    --relation and \
-    --when "charting surfaces a risky, hard-to-reverse decision" \
-    --scope project
+$ wayfinder ext add --source ./skills/pre-mortem --host wayfinder \
+    --during charting --relation and --scope project
+Error: missing required flag --when
+  --when <sentence>  When should the host offer this skill? One sentence, written by
+                     you. It is rendered into the host skill and tells the agent when
+                     to fetch this extension. Sharp conditions fire reliably; vague
+                     ones don't.
+  Example:
+    --when "charting surfaces a risky, hard-to-reverse decision"
+(exit 1)
+
+$ wayfinder ext add --source ./skills/pre-mortem --host wayfinder \
+    --during charting --relation and --scope project \
+    --when "charting surfaces a risky, hard-to-reverse decision"
 ✔ Registered extension "pre-mortem" (project scope)
 ✔ Re-synced the stub's command map (+ pre-mortem)
 ```
 
-Without a TTY, missing flags never fall back to the form — they fail with usage and
-exit 1, so an agent can't hang on a hidden prompt.
-
 ```
 $ wayfinder ext list
-extensions[1]{name,scope,host,during,relation,when}:
+extensions[1]{id,scope,host,during,relation,when}:
   pre-mortem,project,wayfinder,charting,and,"charting surfaces a risky, hard-to-reverse decision"
 
 $ wayfinder ext remove pre-mortem --scope project

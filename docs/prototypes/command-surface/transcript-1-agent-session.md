@@ -1,13 +1,15 @@
 # Transcript 1 — an agent works a map ticket
 
 Scenario: repo `acme/checkout`. The tracker is set to `github` in `.wayfinder/config.json`.
-`wayfinder init` has already been run, so the single wayfinder stub sits in
-`.claude/skills/wayfinder/`. The user types: `/wayfinder work the map, next ticket`.
+`wayfinder init` has already been run, so the wayfinder stub sits in `.claude/skills/`.
 
-## 1. The stub fires
+## 1. The user prompts
 
-The harness loads `.claude/skills/wayfinder/SKILL.md` — the entry point, and the only file
-the CLI ever installs into the harness:
+> /wayfinder work on ticket 15 of map 3
+
+The harness loads the stub `.claude/skills/wayfinder/SKILL.md` — the entry point, and the
+only file the CLI ever installs into a harness. It is written for the agent: no config
+talk, one legal next move, and the command map of everything else this project serves:
 
 ```markdown
 ---
@@ -18,25 +20,22 @@ description: Plan a huge chunk of work — more than one agent session can hold 
 disable-model-invocation: true
 ---
 
-This project serves its planning skills through the wayfinder CLI. Content is rendered
-per project — tracker prose, extensions, and plugins are composed in at render time — so
-always fetch it from the CLI; never act from this stub alone.
-
-**Start here: run `wayfinder skill wayfinder` and follow its output.**
+Your next action MUST be to run `wayfinder skill wayfinder` (a Bash call) and follow its
+output. Do not act from this stub alone.
 
 <!-- wayfinder:index:start — generated; re-synced by init/ext/plugin. Do not edit. -->
-Served skills — fetch any of them with `wayfinder skill <id>`:
+This project also serves — fetch with `wayfinder skill <id>`:
 
-- `wayfinder` — chart and work a map of decision tickets. The starting point.
 - `grilling` — stress-test a plan, decision, or idea through a relentless interview.
-- `domain-modeling` — pin down terminology; record architectural decisions.
+- `domain-modeling` — pin down terminology; record architectural decisions
+  (children: context-format, adr-format).
 - `grill-with-docs` — a grilling that also maintains the docs as you go.
 - `research` — investigate a question against primary sources; capture findings in-repo.
 - `prototype` — throwaway prototype to answer a design question (children: logic, ui).
 - `to-spec` — turn the current conversation into a spec on the tracker.
 - `to-tickets` — break a plan into tracer-bullet tickets with blocking edges.
 
-Full index with children and firing conditions: `wayfinder skills`
+Full index: `wayfinder skills`
 <!-- wayfinder:index:end -->
 ```
 
@@ -82,37 +81,49 @@ At session start, run `wayfinder skill domain-modeling` and apply it alongside t
 protocol.
 
 ## Invocation
+
+Two modes. [...]
+
+### Chart the map
 [...]
 
-## Children
-
-- Run `wayfinder skill grilling` when a session needs the grilling protocol on its own,
-  outside this skill's inlined copy.
-- Run `wayfinder skill domain-modeling` at session start of any grilling, and whenever a
-  term or decision needs recording.
-- Run `wayfinder skill research` inside the subagent prompt of every research ticket.
-- Run `wayfinder skill prototype` when the claimed ticket is labelled `wayfinder:prototype`.
+### Work through the map
+[...] 2. Choose the ticket. If the user named one, use it. [...] **Claim it** [...]
 ```
 
-What the render shows:
+**The `[...]` elisions are for this mock's readability only.** The real render is the
+entire skill as forked and adapted under `content/` — the CLI never summarizes content.
+The only differences from source are the render-time ones: the github operations block
+substituted in from tracker config, grilling inlined once as a named section with its
+in-body references rewritten to the anchor, and cross-skill references rewritten to
+`wayfinder skill <id>` pointers at the exact sites where they fire. No children block:
+wayfinder ships a single `SKILL.md` — children are for skills with sub-files.
 
-- The github "Wayfinding operations" block is substituted in from the tracker config — the
-  source skill's "a tracker doc should have been provided" paragraph is gone.
-- grilling is **inlined once** as a named section; in-body references point at the
-  `#the-grilling-protocol` anchor (composition decision, edge 3).
-- domain-modeling, research, and prototype are **pointers** (edges 4–6), and the render
-  ends with the **children block**: every child's exact command plus its firing condition.
+## 3. The agent follows the render: Work through the map
 
-## 3. A pointer fires
+The prompt matches the render's "Work through the map" mode, so the agent follows those
+steps using the substituted github operations:
 
-The map's next frontier ticket is a grilling ticket. The render says to load
-domain-modeling at session start:
+```
+$ gh issue view 3                          # load the map (low-res view)
+$ gh issue edit 15 --add-assignee @me      # claim the ticket — first write
+$ gh issue view 15 --comments
+title: How should checkout retries interact with idempotency keys?
+labels: wayfinder:grilling
+body: Part of #3
+  ## Question
+  [...] Grill to a decision. At session start, run `wayfinder skill domain-modeling`
+  and apply it alongside the grilling protocol.
+```
+
+The ticket body already names the skill it needs — and in a CLI world that "skill" is
+just a pointer to a Bash call:
 
 ```
 $ wayfinder skill domain-modeling
 # Domain Modeling
 
-[... 74 rendered lines ...]
+[... the full rendered skill ...]
 
 ## Children
 
@@ -121,14 +132,14 @@ $ wayfinder skill domain-modeling
 - Run `wayfinder skill domain-modeling/adr-format` at the moment a decision needs an ADR.
 ```
 
-Intra-skill disclosure survives as sub-tree children: the two format files became the ids
-`domain-modeling/context-format` and `domain-modeling/adr-format`, fetched only at the
-moment of writing — exactly the branch structure they had upstream.
+The agent now grills the human one question at a time, and fetches
+`domain-modeling/adr-format` only at the moment a decision needs recording — the children
+block told it when.
 
 ## 4. A prototype ticket, later in the effort
 
-A different session claims a ticket labelled `wayfinder:prototype`. The wayfinder render's
-children block fires:
+A different session claims a ticket labelled `wayfinder:prototype`. The rendered
+wayfinder's ticket-type line points the way:
 
 ```
 $ wayfinder skill prototype
@@ -155,8 +166,9 @@ Build a tiny interactive terminal app that pushes the state machine through case
 
 ## 5. Discovery
 
-The agent wants to know what else is servable (for example, when a map's Notes section
-names a skill). Default output is TOON:
+When the agent needs the index — for example, a map's Notes section names a skill — the
+list is one command. TOON by default, and no config noise (config state lives on the
+setup commands):
 
 ```
 $ wayfinder skills
@@ -169,7 +181,6 @@ skills[8]{id,origin,children,description}:
   prototype,core,"logic,ui","Build a throwaway prototype to answer a design question…"
   to-spec,core,,"Turn the current conversation into a spec…"
   to-tickets,core,,"Break a plan, spec, or the current conversation into tickets…"
-context: tracker=github(project) extensions=0 plugins=0
 ```
 
 ```
@@ -182,13 +193,12 @@ $ wayfinder skills --json
 ]
 ```
 
-An unknown id fails loudly with the index attached, so the "map Notes names a skill the
-CLI does not serve" case (composition open question 6) has a defined behaviour:
+An unknown id fails loudly with the way back, so the "map Notes names a skill the CLI
+does not serve" case has a defined behaviour:
 
 ```
 $ wayfinder skill riskiest-assumption
 Error: no skill with id "riskiest-assumption" is served.
-Run `wayfinder skills` to see the 8 served skills, or register it:
-  wayfinder ext add riskiest-assumption --source <path> ...
+Run `wayfinder skills` to see the served skills.
 (exit 1)
 ```

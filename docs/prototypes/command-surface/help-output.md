@@ -1,7 +1,25 @@
 # Mock help output
 
-Round 2 — variant A with the round-1 reactions applied. `wayfinder` is a placeholder
-binary name.
+Round 3. Two audiences, two pages: bare `wayfinder` is for an agent actively using the
+skills; `--help` is for a human (or an agent) configuring the CLI. `wayfinder` is a
+placeholder binary name.
+
+## Bare invocation — the agent quickstart
+
+```
+$ wayfinder
+wayfinder — serves this project's planning skills as rendered content
+
+Using the skills? You need exactly two commands:
+  wayfinder skill <id>     Print a skill's rendered content (markdown)
+  wayfinder skills         List every served skill and its children
+
+Start here: run `wayfinder skill wayfinder` and follow its output.
+
+Configuring wayfinder? Run `wayfinder --help` for the setup commands.
+```
+
+## `--help` — the full setup page
 
 ```
 $ wayfinder --help
@@ -13,22 +31,27 @@ Usage
 Agent commands (read-only)
   skill <id>              Print a skill's rendered content (markdown).
                           Ids form a tree: `prototype` is a skill, `prototype/logic` is
-                          one of its children. Every render ends with a children block —
-                          each child's command and when to fetch it.
+                          one of its children. Renders of skills with children end with
+                          a children block — each child's command and when to fetch it.
   skills                  List every served skill and its children: core, extensions,
                           plugins. TOON output; --json for JSON.
 
 Setup commands (run without flags for an interactive form; drive with flags from agents)
   init                    Install the entry point: write the wayfinder stub skill into
-                          the agent harness (.claude/skills/wayfinder/). Idempotent:
-                          re-running repairs the stub and reports a diff.
+                          the selected agent harnesses. Idempotent: re-running repairs
+                          the stubs and reports a diff.
+      --harness <ids>     Install targets: claude (.claude/skills/), agents
+                          (.agents/skills/) — one or both, comma-separated
+      --tracker <name>    Skip the tracker question
   tracker show            Show the effective tracker and where it comes from
-  tracker set [<name>]    Set the tracker for this project (github | gitlab | local)
+  tracker set [<name>]    Set this project's tracker:
+                          github | gitlab | jira | linear | local | custom
+      --doc <path>        For custom: your own tracker doc (repo-relative path)
       --user              Set the global default instead
   ext list                List extension-skill registrations (all scopes)
-  ext add [<name>] [...]  Register an extension skill on a host skill
-  ext edit [<name>] [...] Change a registration
-  ext remove [<name>]     Remove a registration
+  ext add [...]           Serve an extension skill and offer it on a host skill
+  ext edit [<id>] [...]   Change a registration
+  ext remove [<id>]       Remove a registration
       --scope <s>         Scope for ext commands: user | project | local
   plugin add [<git-url>]  Install a plugin from a git repo (pinned to a commit)
   plugin list             List installed plugins
@@ -37,7 +60,7 @@ Setup commands (run without flags for an interactive form; drive with flags from
 Global options
   --json                  JSON instead of TOON (list and status commands)
   --version, -V           Print version
-  --help, -h              Print help
+  --help, -h              Print this page
 
 Config (precedence: local > project > user)
   ~/.config/wayfinder/config.json   user scope (global defaults)
@@ -53,8 +76,8 @@ Notes:
 - `skill` / `skills` is the whole agent surface. Every pointer inside rendered content is
   one of those two commands — the composition research's pointer wording
   ("run `<cli> skill <name>` and follow its output") maps onto it verbatim.
-- Bracketed positionals (`tracker set [<name>]`, `ext add [<name>]`) mark where the
+- Bracketed positionals (`tracker set [<name>]`, `plugin add [<git-url>]`) mark where the
   interactive form takes over when the argument is omitted in a TTY. Without a TTY,
-  omitting them fails with usage.
+  missing arguments fail with a usage error that teaches (see transcript 2, section 4).
 - `ext` and `plugin` mutations re-sync the stub's generated command map as a side effect
-  and report it. `tracker set` never touches the stub.
+  and report it. `tracker set` never touches the stubs.
