@@ -61,6 +61,21 @@ this prototype does not pre-empt it.
 10. **Trackers.** Built in: `github | gitlab | jira | linear | local`. `custom` points at
     your own tracker doc: `tracker set custom --doc <path>`.
 
+## Deliberately deferred (fog on the map — not this ticket)
+
+- **Plugin content sync.** Where clones live on disk, how a pin moves forward (a probable
+  `plugin update [<name>]` verb), cache invalidation, lockfile semantics, per-scope
+  enable — all owned by the plugin-system spec, which follows the extension schema. This
+  ticket locks only the surface around it: `plugin add` pins URL + commit SHA into config,
+  and a fresh-clone `init` reproduces the exact content from the pin. Adding an `update`
+  verb later does not disturb the surface locked here.
+- **Core content updates.** Core skills ship inside the CLI package, so updating the CLI
+  updates the content. The post-v1 update flow for the forked content is its own fog item
+  on the map.
+
+(Stub sync is **not** deferred — it is decision 4: mutations auto-sync the stub's command
+map, and `init` is the repair path.)
+
 ## Rejected alternatives (kept for the record)
 
 - Variant B (bare `wayfinder <name>`) — namespace collisions; reserved-name rule would leak
