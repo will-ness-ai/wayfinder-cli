@@ -16,15 +16,17 @@ wayfinder init — install the entry point into this project
   ◯ agents — .agents/skills/
 
 ? Tracker for this project
-  ❯ local   (your global default)
-    github
-    gitlab
-    jira
-    linear
-    custom — point at your own tracker doc
+  ❯ local — markdown files in-repo   (your global default)
+    github cli
+    github mcp
+    gitlab cli
+    gitlab mcp
+    jira mcp
+    linear mcp
+    other — type your own (freeform, e.g. "shortcut mcp")
 
 ✔ Harnesses: claude
-✔ Tracker: github → .wayfinder/config.json (project scope)
+✔ Tracker: github cli → .wayfinder/config.json (project scope)
 ✔ Wrote .claude/skills/wayfinder/SKILL.md  (the single stub — the only file the CLI
   ever installs into a harness)
 ✔ Created .wayfinder/config.json (project scope)
@@ -42,30 +44,42 @@ an id to this select; the surface does not change. The stub's full content is sh
 reports a diff instead of failing. It never writes per-skill stubs, so originals the
 developer keeps installed (their own to-spec, to-tickets, …) are never touched.
 
-Flag form for scripts: `wayfinder init --harness claude,agents --tracker github`.
+Flag form for scripts: `wayfinder init --harness claude,agents --tracker "github cli"`.
 
 ## 2. Tracker config
 
+The tracker value is **freeform prose** — a flat string like `github cli`, `jira mcp`,
+`local`. Known values ship full operations docs that get substituted into renders. (The
+default set above is provisional — a later research ticket populates it.) The select
+groups rows visually by platform, but the model is flat: no platform → surface hierarchy.
+
 ```
 $ wayfinder tracker show
-tracker: github
+tracker: github cli
 sources[2]{scope,file,value,effective}:
-  project,.wayfinder/config.json,github,true
+  project,.wayfinder/config.json,"github cli",true
   user,~/.config/wayfinder/config.json,local,false
 note: no repo sniffing — the tracker is only ever what config says
 ```
 
-Built-ins: `github | gitlab | jira | linear | local`. A team with its own workflow points
-at its own tracker doc instead — a repo-relative markdown file in the tracker-doc format
-(operations plus a "Wayfinding operations" section):
+Any other value is custom automatically — no registration needed. The render then names
+the tracker as prose and leaves the operations to the agent's own tools (for example a
+connected MCP server):
 
 ```
-$ wayfinder tracker set custom --doc ./docs/trackers/acme-flow.md
-✔ Tracker: custom (./docs/trackers/acme-flow.md) → .wayfinder/config.json (project scope)
+$ wayfinder tracker set "acme-tracker mcp"
+✔ Tracker: acme-tracker mcp → .wayfinder/config.json (project scope)
+  No built-in operations doc for this value: renders will name the tracker and leave
+  operations to the agent's tools. Attach your own doc with --doc <path> for full
+  operations prose.
+
+$ wayfinder tracker set "acme-tracker mcp" --doc ./docs/trackers/acme-tracker.md
+✔ Tracker: acme-tracker mcp (doc: ./docs/trackers/acme-tracker.md) → .wayfinder/config.json
 ```
 
-`tracker set` rewrites config only. It does not touch the stubs: renders are fetched
-live, so a tracker change needs no stub change.
+`--doc` works with any value, known or not — a team can override the built-in `github cli`
+prose with its own. `tracker set` rewrites config only. It does not touch the stubs:
+renders are fetched live, so a tracker change needs no stub change.
 
 ## 3. Extension-skill CRUD — interactive
 
@@ -102,8 +116,13 @@ transcript fixes only the surface):
 - **Id** — derived from the source's frontmatter name; editable only for collisions.
 - **Host / offered during** — which served skill offers it, and in which of that host's
   phases.
-- **Relation** — `and` offers it alongside the default for that moment; `instead` replaces
-  the default.
+- **Relation** — each host moment already has a default skill, and the render must tell
+  the agent whether that default still applies. `and` renders as "…run
+  `wayfinder skill pre-mortem` **alongside** the default grilling" — both happen.
+  `instead` renders as "…run `wayfinder skill grilling-frontend-prototyping` **instead
+  of** the default prototype flow" — the extension supersedes it, so the agent does not
+  run the plain flow and the variant loop as duplicates. Without this field the render
+  cannot say which, and the agent must guess.
 - **Fires when** — becomes the pointer sentence in the host's render; the registrant
   writes it, because pointer wording is what makes a pointer fire reliably.
 

@@ -42,11 +42,12 @@ Setup commands (run without flags for an interactive form; drive with flags from
                           the stubs and reports a diff.
       --harness <ids>     Install targets: claude (.claude/skills/), agents
                           (.agents/skills/) — one or both, comma-separated
-      --tracker <name>    Skip the tracker question
+      --tracker <value>   Skip the tracker question
   tracker show            Show the effective tracker and where it comes from
-  tracker set [<name>]    Set this project's tracker:
-                          github | gitlab | jira | linear | local | custom
-      --doc <path>        For custom: your own tracker doc (repo-relative path)
+  tracker set [<value>]   Set this project's tracker — freeform prose, e.g. "github cli",
+                          "jira mcp", "local". Known values ship operations docs; any
+                          other value renders as-is, operations left to the agent's tools
+      --doc <path>        Attach your own tracker doc (operations prose) to any value
       --user              Set the global default instead
   ext list                List extension-skill registrations (all scopes)
   ext add [...]           Serve an extension skill and offer it on a host skill

@@ -1,6 +1,6 @@
 # Transcript 1 — an agent works a map ticket
 
-Scenario: repo `acme/checkout`. The tracker is set to `github` in `.wayfinder/config.json`.
+Scenario: repo `acme/checkout`. The tracker is set to `github cli` in `.wayfinder/config.json`.
 `wayfinder init` has already been run, so the wayfinder stub sits in `.claude/skills/`.
 
 ## 1. The user prompts
@@ -51,7 +51,7 @@ A loose idea has arrived — too big for one agent session, and wrapped in fog [
 
 The map is a single issue on this repo's issue tracker, labelled `wayfinder:map` [...]
 
-### Wayfinding operations (tracker: github)
+### Wayfinding operations (tracker: github cli)
 
 The **map** is a single issue with **child** issues as tickets.
 
@@ -93,7 +93,7 @@ Two modes. [...]
 
 **The `[...]` elisions are for this mock's readability only.** The real render is the
 entire skill as forked and adapted under `content/` — the CLI never summarizes content.
-The only differences from source are the render-time ones: the github operations block
+The only differences from source are the render-time ones: the github-cli operations block
 substituted in from tracker config, grilling inlined once as a named section with its
 in-body references rewritten to the anchor, and cross-skill references rewritten to
 `wayfinder skill <id>` pointers at the exact sites where they fire. No children block:
@@ -102,7 +102,7 @@ wayfinder ships a single `SKILL.md` — children are for skills with sub-files.
 ## 3. The agent follows the render: Work through the map
 
 The prompt matches the render's "Work through the map" mode, so the agent follows those
-steps using the substituted github operations:
+steps using the substituted github-cli operations:
 
 ```
 $ gh issue view 3                          # load the map (low-res view)
@@ -112,14 +112,23 @@ title: How should checkout retries interact with idempotency keys?
 labels: wayfinder:grilling
 body: Part of #3
   ## Question
-  [...] Grill to a decision. At session start, run `wayfinder skill domain-modeling`
-  and apply it alongside the grilling protocol.
+  [...] Grill to a decision. At session start, run `wayfinder skill grilling` and
+  `wayfinder skill domain-modeling`, and apply both.
 ```
 
-The ticket body already names the skill it needs — and in a CLI world that "skill" is
-just a pointer to a Bash call:
+The ticket body already names the skills it needs — and in a CLI world a "skill" is just
+a pointer to a Bash call. The agent runs both:
 
 ```
+$ wayfinder skill grilling
+# Grilling
+
+Interview me relentlessly about every aspect of this until we reach a shared
+understanding. Walk down each branch of the decision tree, resolving dependencies
+between decisions one-by-one. For each question, provide your recommended answer.
+
+[... the full skill ...]
+
 $ wayfinder skill domain-modeling
 # Domain Modeling
 
@@ -134,7 +143,9 @@ $ wayfinder skill domain-modeling
 
 The agent now grills the human one question at a time, and fetches
 `domain-modeling/adr-format` only at the moment a decision needs recording — the children
-block told it when.
+block told it when. (Ticket bodies carrying an explicit grilling pointer is input to the
+open per-edge composition ticket, which currently recommends inlining grilling into
+wayfinder's render.)
 
 ## 4. A prototype ticket, later in the effort
 
