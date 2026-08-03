@@ -2,8 +2,9 @@
 
 Prototype for the map ticket [Command surface and agent entry point](https://github.com/will-ness-ai/wayfinder-cli/issues/6).
 
-**Status: round 3 — round-2 reactions applied, awaiting final confirmation.**
-Transcript 3 was accepted in round 2 and only received consistency edits.
+**Status: round 4 — round-3 reactions applied, awaiting final confirmation.**
+Help, transcript 1 (bar one edit), transcript 2 (bar the tracker model), and transcript 3
+were accepted in round 3; this round applies the remaining edits.
 
 **Placeholder name.** The binary is written `wayfinder` throughout. The real name is its own
 open ticket ([Pick the CLI and binary name](https://github.com/will-ness-ai/wayfinder-cli/issues/9));
@@ -58,8 +59,14 @@ this prototype does not pre-empt it.
    `agents` → `.agents/skills/`. `init` offers a multi-select with detected targets
    marked (skills.sh-style); `--harness claude,agents` for scripts. Adding a harness later
    adds an id, not new surface.
-10. **Trackers.** Built in: `github | gitlab | jira | linear | local`. `custom` points at
-    your own tracker doc: `tracker set custom --doc <path>`.
+10. **Trackers are freeform prose, flat.** The tracker value is one string —
+    `github cli`, `jira mcp`, `local`, or anything else. Known values ship full
+    operations docs substituted into renders. Any unknown value is custom automatically:
+    the render names the tracker as prose and leaves operations to the agent's own tools
+    (for example a connected MCP server). `--doc <path>` attaches full operations prose
+    to any value, known or not. No platform → surface hierarchy: the real set is sparse
+    (each entry needs a doc), and freeform custom values break a matrix anyway; the
+    interactive select only groups rows visually.
 
 ## Deliberately deferred (fog on the map — not this ticket)
 
@@ -72,6 +79,9 @@ this prototype does not pre-empt it.
 - **Core content updates.** Core skills ship inside the CLI package, so updating the CLI
   updates the content. The post-v1 update flow for the forked content is its own fog item
   on the map.
+- **The default tracker set.** Which values ship operations docs (`github cli`,
+  `github mcp`, `jira mcp`, …) is a later research ticket; the lists in these mocks are
+  provisional.
 
 (Stub sync is **not** deferred — it is decision 4: mutations auto-sync the stub's command
 map, and `init` is the repair path.)
@@ -88,3 +98,6 @@ map, and `init` is the repair path.)
   data in an agent-audience command.
 - A "keep the global default" option in the tracker select — replaced by pre-selecting the
   global default and labelling it.
+- A platform → surface hierarchy for trackers — a matrix the sparse real set and freeform
+  custom values would break; flat freeform strings instead.
+- A registered `custom` tracker kind — any unknown value is custom automatically.

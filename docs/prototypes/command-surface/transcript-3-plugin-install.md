@@ -1,6 +1,6 @@
 # Transcript 3 — plugin install from git
 
-Scenario: same repo as transcript 2, tracker already `github`. The team wants the
+Scenario: same repo as transcript 2, tracker already `github cli`. The team wants the
 frontend-prototyping loop, which ships only as an example plugin — never in core.
 (The plugin system has its own upcoming spec; this transcript fixes only the command
 surface it must fit into.)
@@ -57,7 +57,7 @@ $ wayfinder init
 ✔ Installed plugin wayfinder-plugin-frontend-prototyping @ 4f2c9e1 (from project config)
 ✔ Harnesses: claude (from project config)
 ✔ Wrote .claude/skills/wayfinder/SKILL.md (command map: 9 skills)
-Tracker: github (project)
+Tracker: github cli (project)
 ```
 
 ## 4. Remove
