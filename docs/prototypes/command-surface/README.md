@@ -2,8 +2,8 @@
 
 Prototype for the map ticket [Command surface and agent entry point](https://github.com/will-ness-ai/wayfinder-cli/issues/6).
 
-**Status: round 1 — awaiting reaction.** Nothing here is locked. Every command, flag, path,
-and output line is a mock to react to, not a spec.
+**Status: round 2 — converged on all seven react points, awaiting final confirmation.**
+Round 1 proposed; the human reacted; this round bakes the reactions in.
 
 **Placeholder name.** The binary is written `wayfinder` throughout. The real name is its own
 open ticket ([Pick the CLI and binary name](https://github.com/will-ness-ai/wayfinder-cli/issues/9));
@@ -11,48 +11,50 @@ this prototype does not pre-empt it.
 
 ## Files
 
-- [help-output.md](help-output.md) — mock `wayfinder --help`, plus a minimal alternative
-  surface (variant B) to react against.
+- [help-output.md](help-output.md) — mock `wayfinder --help`.
 - [transcript-1-agent-session.md](transcript-1-agent-session.md) — an agent works a map
-  ticket end to end: stub fires → rendered skill → CLI pointer → disclosed file → skill list.
+  ticket end to end: stub fires → rendered skill → CLI pointer → child skill → skill list.
 - [transcript-2-project-setup.md](transcript-2-project-setup.md) — a human sets up a
-  project: `init` (the entry-point stub), tracker config, extension-skill CRUD.
+  project: `init` (writes the single stub), tracker config, extension-skill CRUD in both
+  interactive and flag form.
 - [transcript-3-plugin-install.md](transcript-3-plugin-install.md) — plugin install from
-  git, and how a plugin skill surfaces in the list and the stubs.
+  git, and how a plugin skill surfaces in the list and the stub's command map.
 
-## The shape in one paragraph
+## Decisions (from the round-1 reaction)
 
-The CLI has exactly two agent-facing read commands: `wayfinder skill <name>` prints one
-rendered skill, and `wayfinder skills` lists everything served. All other commands are
-human-facing setup: `init`, `tracker`, `ext`, `plugin`. The entry point is a set of **thin
-stub skills** that `wayfinder init` writes into the agent harness (`.claude/skills/` for
-Claude Code): each stub carries the real skill's frontmatter description — so model-invoked
-discovery keeps working — and a one-line body that tells the agent to run
-`wayfinder skill <name>` and follow its output. Rendered content is composed at render time
-per the composition decision: some dependencies inline, the rest as pointers of the standard
-form "When \<condition\>, run `wayfinder skill <name>` and follow its output."
+1. **Command form: variant A.** The whole agent surface is `wayfinder skill <id>` (print one
+   rendered skill) and `wayfinder skills` (list everything served). Variant B (bare
+   `wayfinder <name>`) is rejected: skill names would collide with command names.
+2. **Sub-tree ids, not file paths.** Skill ids form a tree: `prototype` has children
+   `prototype/logic` and `prototype/ui`; `domain-modeling` has `domain-modeling/adr-format`
+   and `domain-modeling/context-format`. Ids are logical — no `.md`, no filesystem leak.
+   Every skill render ends with a **children block**: one line per child with the exact
+   command and its firing condition. The `--file` flag from round 1 is dropped.
+3. **Entry point: a single wayfinder stub.** `wayfinder init` writes exactly one stub,
+   `.claude/skills/wayfinder/SKILL.md` — an introduction that points at
+   `wayfinder skill wayfinder` as the starting point, plus a generated command map of every
+   served skill. No per-skill stubs: the human may keep original skills (to-spec,
+   to-tickets, …) installed on their machine for other workflows, and the CLI must not
+   collide with them.
+4. **Stub refresh: auto-sync.** `ext` and `plugin` mutations rewrite the stub's generated
+   command map as a side effect and say so in their output. `tracker set` never touches the
+   stub — renders are fetched live, so a tracker change needs no stub change. `init` is
+   first-run and repair (idempotent, reports a diff).
+5. **Config layout.** `~/.config/wayfinder/config.json` (user), `.wayfinder/config.json`
+   (project, committed), `.wayfinder/local.json` (gitignored). Precedence: local > project
+   > user.
+6. **Output encoding.** List and status commands (`skills`, `tracker show`, `ext list`,
+   `plugin list`) print TOON by default; `--json` switches to JSON. Skill renders are
+   markdown — the markdown is the product.
+7. **Dual-mode commands.** Every setup command is drivable two ways: flags for agents and
+   scripts; run it without flags in a TTY and it opens an interactive form (inputs,
+   selects, multi-selects — Claude-Code-like). Without a TTY, missing flags fail with
+   usage. The exact `ext` field set stays open — the extension-schema grill owns it.
 
-## React points
+## Rejected alternatives (kept for the record)
 
-1. **Command form.** Variant A: `wayfinder skill <name>` + `wayfinder skills` (matches the
-   pointer wording locked in the composition research). Variant B: bare `wayfinder <name>`
-   (shortest possible, but skill names collide with command names). See
-   [help-output.md](help-output.md).
-2. **Disclosed files.** `wayfinder skill prototype --file LOGIC.md` (flag) vs
-   `wayfinder skill prototype/LOGIC.md` (sub-path). The composition ticket flagged this as
-   open question 3; the transcripts use the flag form.
-3. **Entry point.** One stub per served skill (shown; preserves per-skill model-invoked
-   discovery) vs a single wayfinder-only stub (smaller footprint, no discovery for the
-   other seven).
-4. **Stub refresh.** In the mocks, `ext`/`plugin`/`tracker` mutations rewrite the stubs
-   automatically and `init` is an idempotent first-run/sync command. Alternative: stubs
-   change only on explicit `init`.
-5. **Config layout.** `.wayfinder/config.json` (project, committed),
-   `.wayfinder/local.json` (gitignored), `~/.config/wayfinder/config.json` (user).
-   Precedence shown: local > project > user. Only project-over-user is decided on the map;
-   local's position is a guess.
-6. **`--json`.** Read commands accept `--json` for machine-readable output. Keep for v1 or
-   cut?
-7. **Extension CRUD flags are illustrative.** The registration schema has its own upcoming
-   grill; the question here is only whether `ext add/list/edit/remove --scope <s>` is the
-   right *surface* to hang that schema on.
+- Variant B (bare `wayfinder <name>`) — namespace collisions; reserved-name rule would leak
+  into the extension and plugin specs.
+- One stub per served skill — collides with originals the human keeps installed; larger
+  footprint.
+- `--file <path>` for disclosed files — leaks the filesystem; replaced by sub-tree ids.

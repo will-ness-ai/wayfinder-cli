@@ -2,82 +2,110 @@
 
 Scenario: a developer adopts wayfinder-cli in the repo `acme/checkout`. The CLI is already
 installed globally. Their user config already sets a global tracker default of `local`.
+Every setup command here has two faces: an interactive form when run without flags in a
+TTY, and flags for agents and scripts.
 
-## 1. Init — the entry point
+## 1. Init — the entry point, interactively
 
 ```
 $ wayfinder init
-Wrote 8 stub skills to .claude/skills/:
-  wayfinder, grilling, domain-modeling, grill-with-docs, research, prototype,
-  to-spec, to-tickets
-Created .wayfinder/config.json (project scope)
-Added .wayfinder/local.json to .gitignore
+wayfinder init — install the entry point into this project
 
-Tracker: local (from user scope — no project tracker set)
-Next: set this project's tracker with `wayfinder tracker set <github|gitlab|local>`
+? Tracker for this project  (global default: local)
+  ❯ github
+    gitlab
+    local
+    keep the global default
+
+✔ Tracker: github → .wayfinder/config.json (project scope)
+✔ Wrote .claude/skills/wayfinder/SKILL.md  (the single stub — the only file the CLI
+  ever installs into the harness)
+✔ Created .wayfinder/config.json (project scope)
+✔ Added .wayfinder/local.json to .gitignore
+
+Next: have your agent run `wayfinder skill wayfinder`
 ```
 
-`init` is idempotent: re-running it re-syncs the stubs against the current config and
-reports a diff instead of failing.
+The stub's full content is shown in [transcript 1](transcript-1-agent-session.md): an
+introduction pointing at `wayfinder skill wayfinder` as the starting point, plus a
+generated command map of every served skill between `wayfinder:index` markers.
 
-Each stub is a thin pointer whose frontmatter is copied from the served skill, so
-model-invoked discovery still works in the harness. `.claude/skills/grilling/SKILL.md`:
+`init` is idempotent: re-running it repairs the stub against the current config and
+reports a diff instead of failing. It never writes per-skill stubs, so originals the
+developer keeps installed (their own to-spec, to-tickets, …) are never touched.
 
-```markdown
----
-name: grilling
-description: Grill the user relentlessly about a plan, decision, or idea. Use when the user
-  wants to stress-test their thinking, or uses any 'grill' trigger phrases.
----
-
-Run `wayfinder skill grilling` and follow its output. The output is the full skill,
-rendered for this project's configuration — do not act from this stub alone.
-```
+Flag form for scripts: `wayfinder init --tracker github`.
 
 ## 2. Tracker config
 
 ```
-$ wayfinder tracker set github
-Tracker for this project: github
-  written to .wayfinder/config.json (project scope — wins over user scope: local)
-Re-synced 8 stubs (rendered content changes; stub bodies unchanged)
-
 $ wayfinder tracker show
-Effective tracker: github
-  project  .wayfinder/config.json            github   ← effective
-  user     ~/.config/wayfinder/config.json   local
-No repo sniffing: the tracker is only ever what config says.
+tracker: github
+sources[2]{scope,file,value,effective}:
+  project,.wayfinder/config.json,github,true
+  user,~/.config/wayfinder/config.json,local,false
+note: no repo sniffing — the tracker is only ever what config says
 ```
 
-## 3. Extension-skill CRUD
+`tracker set gitlab` would rewrite project config only. It does not touch the stub:
+renders are fetched live, so a tracker change needs no stub change.
 
-The team has a house skill for pre-mortems and wants it offered during charting.
-(The flags below are illustrative — the registration schema is its own upcoming
-decision; see react point 7.)
+## 3. Extension-skill CRUD — interactive
+
+The team has a house skill for pre-mortems and wants it offered during charting. Run bare,
+`ext add` opens a form. (Fields are illustrative — the registration schema is its own
+upcoming decision; this transcript fixes only the surface.)
+
+```
+$ wayfinder ext add
+wayfinder ext add — register an extension skill
+
+? Name                    › pre-mortem
+? Source path             › ./skills/pre-mortem
+? Host skill                (select)  ❯ wayfinder
+? Offered during            (select)  ❯ charting
+? Relation to the default   (select)  ❯ and — alongside it
+? Fires when              › charting surfaces a risky, hard-to-reverse decision
+? Scope                     (select)  ❯ project (.wayfinder/config.json)
+
+✔ Registered extension "pre-mortem" (project scope)
+✔ Re-synced the stub's command map (+ pre-mortem)
+Rendered `wayfinder skill wayfinder` now offers pre-mortem at its charting extension point.
+```
+
+## 4. The same registration, driven by an agent
 
 ```
 $ wayfinder ext add pre-mortem \
     --source ./skills/pre-mortem \
-    --host wayfinder --ticket-type grilling \
+    --host wayfinder --during charting \
+    --relation and \
     --when "charting surfaces a risky, hard-to-reverse decision" \
-    --relation and --hitl --mode in-session --phase charting \
     --scope project
-Registered extension "pre-mortem" (project scope)
-  host: wayfinder · offered: and (alongside the default grilling)
-Re-synced stubs: wrote .claude/skills/pre-mortem/SKILL.md
-Rendered wayfinder now offers pre-mortem at its charting extension point.
-
-$ wayfinder ext list
-NAME        SCOPE    HOST       WHEN                                          RELATION
-pre-mortem  project  wayfinder  charting surfaces a risky, hard-to-reverse…   and
-
-$ wayfinder ext remove pre-mortem --scope project
-Removed extension "pre-mortem" (project scope)
-Re-synced stubs: deleted .claude/skills/pre-mortem/SKILL.md
+✔ Registered extension "pre-mortem" (project scope)
+✔ Re-synced the stub's command map (+ pre-mortem)
 ```
 
-After `ext add`, the rendered `wayfinder skill wayfinder` output carries a registered-
-extensions block at the matching extension point, for example:
+Without a TTY, missing flags never fall back to the form — they fail with usage and
+exit 1, so an agent can't hang on a hidden prompt.
+
+```
+$ wayfinder ext list
+extensions[1]{name,scope,host,during,relation,when}:
+  pre-mortem,project,wayfinder,charting,and,"charting surfaces a risky, hard-to-reverse decision"
+
+$ wayfinder ext remove pre-mortem --scope project
+✔ Removed extension "pre-mortem" (project scope)
+✔ Re-synced the stub's command map (- pre-mortem)
+```
+
+## 5. What the registration changes
+
+After `ext add`, two surfaces update automatically:
+
+- The stub's generated command map gains a `pre-mortem` line, so sessions see it exists.
+- The rendered `wayfinder skill wayfinder` output carries a registered-extensions block at
+  the matching extension point:
 
 ```
 ### Registered extensions (charting)
@@ -86,5 +114,5 @@ extensions block at the matching extension point, for example:
   `wayfinder skill pre-mortem` and follow its output, alongside the default grilling.
 ```
 
-How the block is injected — and whether charting sessions read it from the render or from
-`wayfinder skills` — is the extension-schema grill's question, not this ticket's.
+How the block is injected — and the full field set a registration carries — is the
+extension-schema grill's question, not this ticket's.
