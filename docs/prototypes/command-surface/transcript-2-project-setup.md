@@ -95,8 +95,6 @@ wayfinder ext add — serve an extension skill and offer it on a host
 ? Serve under id          › pre-mortem   (from the source's frontmatter; edit only on collision)
 ? Host skill                (select)  ❯ wayfinder
 ? Offered during            (select)  ❯ charting        (the host's phase: charting | working)
-? Relation to the default   (select)  ❯ and — offered alongside the default grilling
-                                        instead — replaces the default for matching tickets
 ? Fires when              › charting surfaces a risky, hard-to-reverse decision
     One sentence, written by you. It is rendered into the host skill and tells the
     agent when to fetch this extension — sharp conditions fire reliably, vague ones don't.
@@ -116,15 +114,12 @@ transcript fixes only the surface):
 - **Id** — derived from the source's frontmatter name; editable only for collisions.
 - **Host / offered during** — which served skill offers it, and in which of that host's
   phases.
-- **Relation** — each host moment already has a default skill, and the render must tell
-  the agent whether that default still applies. `and` renders as "…run
-  `wayfinder skill pre-mortem` **alongside** the default grilling" — both happen.
-  `instead` renders as "…run `wayfinder skill grilling-frontend-prototyping` **instead
-  of** the default prototype flow" — the extension supersedes it, so the agent does not
-  run the plain flow and the variant loop as duplicates. Without this field the render
-  cannot say which, and the agent must guess.
 - **Fires when** — becomes the pointer sentence in the host's render; the registrant
   writes it, because pointer wording is what makes a pointer fire reliably.
+
+Extensions are always **additive**: the host's default skill for that moment still
+applies, and the extension is offered on top of it. A frontend prototype ticket runs both
+the prototype skill and a registered frontend-prototyping loop.
 
 ## 4. The same registration, driven by an agent
 
@@ -133,7 +128,7 @@ that teaches:
 
 ```
 $ wayfinder ext add --source ./skills/pre-mortem --host wayfinder \
-    --during charting --relation and --scope project
+    --during charting --scope project
 Error: missing required flag --when
   --when <sentence>  When should the host offer this skill? One sentence, written by
                      you. It is rendered into the host skill and tells the agent when
@@ -144,7 +139,7 @@ Error: missing required flag --when
 (exit 1)
 
 $ wayfinder ext add --source ./skills/pre-mortem --host wayfinder \
-    --during charting --relation and --scope project \
+    --during charting --scope project \
     --when "charting surfaces a risky, hard-to-reverse decision"
 ✔ Registered extension "pre-mortem" (project scope)
 ✔ Re-synced the stub's command map (+ pre-mortem)
@@ -152,8 +147,8 @@ $ wayfinder ext add --source ./skills/pre-mortem --host wayfinder \
 
 ```
 $ wayfinder ext list
-extensions[1]{id,scope,host,during,relation,when}:
-  pre-mortem,project,wayfinder,charting,and,"charting surfaces a risky, hard-to-reverse decision"
+extensions[1]{id,scope,host,during,when}:
+  pre-mortem,project,wayfinder,charting,"charting surfaces a risky, hard-to-reverse decision"
 
 $ wayfinder ext remove pre-mortem --scope project
 ✔ Removed extension "pre-mortem" (project scope)
@@ -172,7 +167,7 @@ After `ext add`, two surfaces update automatically:
 ### Registered extensions (charting)
 
 - **pre-mortem** — when charting surfaces a risky, hard-to-reverse decision, run
-  `wayfinder skill pre-mortem` and follow its output, alongside the default grilling.
+  `wayfinder skill pre-mortem` and follow its output.
 ```
 
 How the block is injected — and the full field set a registration carries — is the

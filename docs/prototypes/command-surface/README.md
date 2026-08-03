@@ -2,9 +2,9 @@
 
 Prototype for the map ticket [Command surface and agent entry point](https://github.com/will-ness-ai/wayfinder-cli/issues/6).
 
-**Status: round 4 — round-3 reactions applied, awaiting final confirmation.**
-Help, transcript 1 (bar one edit), transcript 2 (bar the tracker model), and transcript 3
-were accepted in round 3; this round applies the remaining edits.
+**Status: round 5 — round-3 reactions and the relation-field removal applied, awaiting
+final confirmation.** Help, transcript 1 (bar one edit), transcript 2 (bar the tracker
+model), and transcript 3 were accepted in round 3.
 
 **Placeholder name.** The binary is written `wayfinder` throughout. The real name is its own
 open ticket ([Pick the CLI and binary name](https://github.com/will-ness-ai/wayfinder-cli/issues/9));
@@ -101,3 +101,7 @@ map, and `init` is the repair path.)
 - A platform → surface hierarchy for trackers — a matrix the sparse real set and freeform
   custom values would break; flat freeform strings instead.
 - A registered `custom` tracker kind — any unknown value is custom automatically.
+- A relation-to-default field (`and`/`instead`) on extension registrations — unnecessary
+  complexity. Extensions are always additive: the host's default skill still applies, and
+  the extension is offered on top (a frontend prototype ticket runs both the prototype
+  skill and a registered frontend-prototyping loop).
