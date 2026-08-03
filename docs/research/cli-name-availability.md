@@ -1,0 +1,38 @@
+# CLI name availability survey
+
+Research for issue #3. All registry checks made on **2026-08-02** against primary sources (the registries' own APIs). `FREE` = the registry returned HTTP 404 for the exact name; `TAKEN` = HTTP 200 with an existing package/crate.
+
+Registries checked per candidate:
+
+- **npm**: `https://registry.npmjs.org/<name>`
+- **Homebrew (core)**: `https://formulae.brew.sh/api/formula/<name>.json`
+- **crates.io**: `https://crates.io/api/v1/crates/<name>`
+- **GitHub**: `gh search repos --match name <name>` (public search)
+
+## Candidate x registry table
+
+| Candidate | npm | Homebrew core | crates.io | GitHub (prominent exact-name repos) |
+|---|---|---|---|---|
+| `wayfinder` | **TAKEN** — "Generic graph search using A* or Dijkstra", latest 0.1.5, last publish 2022-06-28, ~1,233 downloads/month ([registry](https://registry.npmjs.org/wayfinder), [downloads](https://api.npmjs.org/downloads/point/last-month/wayfinder)) | FREE — formula and cask both 404 ([formula](https://formulae.brew.sh/api/formula/wayfinder.json), [cask](https://formulae.brew.sh/api/cask/wayfinder.json)) | **TAKEN** — "A little HTTP router generator", v0.2.1, inactive since 2019-12, ~4.4k total downloads ([crate](https://crates.io/api/v1/crates/wayfinder)) | **TAKEN as a name-space** — org `wayfinder` (Wayfinder OSS, registered 2010) exists ([org](https://github.com/wayfinder)); [laravel/wayfinder](https://github.com/laravel/wayfinder) has ~1.8k stars and is active (2026-08) |
+| `wayfinder-cli` | **FREE** (404 on 2026-08-02) ([registry](https://registry.npmjs.org/wayfinder-cli)) | FREE ([formula](https://formulae.brew.sh/api/formula/wayfinder-cli.json)) | **TAKEN and freshly active** — "wf: a terminal tool for searching and browsing Pathfinder 2e / Starfinder 2e data", created 2026-07-10, updated 2026-07-30, ships a `wf` binary ([crate](https://crates.io/api/v1/crates/wayfinder-cli)) | No prominent repo besides this one; a GitHub Action exists to install the *Appvia* Wayfinder CLI ([install-wayfinder-cli-action](https://github.com/gcolman/install-wayfinder-cli-action)) |
+| `wayfind` | **TAKEN and very active** — "Team decision trail for AI-assisted development", 72 versions, created 2026-03, last publish 2026-04, latest 2.0.81 ([registry](https://registry.npmjs.org/wayfind)) — direct conceptual overlap with this project's space | FREE ([formula](https://formulae.brew.sh/api/formula/wayfind.json)) | **TAKEN and active** — "A speedy, flexible router", v1.1.0, updated 2026-08-01, ~23k downloads ([crate](https://crates.io/api/v1/crates/wayfind)) | Org `wayfind` exists ([org](https://github.com/wayfind)); crate repo at [SwornSystems/wayfind](https://github.com/SwornSystems/wayfind) |
+| `@wayfinder` (npm scope) | **No published packages under the scope** — registry search `scope:wayfinder` returns total 0 ([search](https://registry.npmjs.org/-/v1/search?text=scope:wayfinder&size=10)). **Ownership of the name is unverified**: the registry user endpoint now returns 401 for every account (including known-existing ones), and npmjs.com returns 403 to non-browser clients, so it was not possible to confirm anonymously whether a user/org named `wayfinder` already holds the scope | n/a | n/a | See `wayfinder` row — GitHub org `wayfinder` is taken (not the same namespace, but the analogous name) |
+| `wayf` | FREE ([registry](https://registry.npmjs.org/wayf)) | FREE ([formula](https://formulae.brew.sh/api/formula/wayf.json)) | FREE ([crate](https://crates.io/api/v1/crates/wayf)) | No prominent exact-name repo. Naming-confusion note: **WAYF** ("Where Are You From", [wayf.dk](https://wayf.dk/en)) is an established Danish identity-federation service |
+| `wayfndr` | FREE ([registry](https://registry.npmjs.org/wayfndr)) | FREE ([formula](https://formulae.brew.sh/api/formula/wayfndr.json)) | FREE ([crate](https://crates.io/api/v1/crates/wayfndr)) | No exact-name repos of note (only a near-empty `WayfndrAI` hobby repo) |
+| `skill-wayfinder` | FREE ([registry](https://registry.npmjs.org/skill-wayfinder)) | FREE ([formula](https://formulae.brew.sh/api/formula/skill-wayfinder.json)) | FREE ([crate](https://crates.io/api/v1/crates/skill-wayfinder)) | No repo with that exact name; nearby names exist (`wayfinder-openclaw-skill`, `laravel-wayfinder-skill`) |
+
+## Collision notes: existing software called "Wayfinder"
+
+The plain word is crowded. Checked 2026-08-02:
+
+1. **Appvia Wayfinder** — a Kubernetes / cloud self-service platform whose official CLI is documented as "the Wayfinder CLI"; the binary is **`wf`**, installed via curl from their release bucket (not Homebrew core). Source: [docs.appvia.io/wayfinder/cli](https://docs.appvia.io/wayfinder/cli). This is the closest thing to an existing, commercially backed "Wayfinder CLI".
+2. **Laravel Wayfinder** — "Generate TypeScript representations of your Laravel actions and routes". Active and popular: [laravel/wayfinder](https://github.com/laravel/wayfinder) (~1.8k stars), Packagist `laravel/wayfinder` v0.1.20 (2026-05) ([packagist](https://repo.packagist.org/p2/laravel/wayfinder.json)), npm [`@laravel/vite-plugin-wayfinder`](https://registry.npmjs.org/@laravel%2fvite-plugin-wayfinder). Note: `@laravel/wayfinder` itself is 404 on npm — Laravel ships the npm side as a Vite plugin.
+3. **AR.IO WayFinder** — a gateway-routing product with an npm CLI already named [`@ar.io/wayfinder-cli`](https://registry.npmjs.org/@ar.io%2fwayfinder-cli) (v0.0.4, published 2026-01), plus `wayfinder-core` / `wayfinder-react`.
+4. **`wayfinder-cli` crate** — brand-new (July 2026) and active TTRPG terminal tool on crates.io; also claims the **`wf`** binary name (same as Appvia). ([crate](https://crates.io/api/v1/crates/wayfinder-cli))
+5. **Wayfinder (video game)** — Airship Syndicate's ARPG, on Steam and still actively promoted in 2026 ([Wikipedia](https://en.wikipedia.org/wiki/Wayfinder_(video_game)), [Steam news](https://store.steampowered.com/news/app/1171690/view/3653035411216123334)). Not developer tooling, but it dominates general web search for the bare word.
+6. **Wayfinder OSS** — the historic GitHub org [`wayfinder`](https://github.com/wayfinder) (mapping software, registered 2010) holds the exact GitHub org name.
+7. **Ecosystem adjacency** — npm search for "wayfinder" ([search](https://registry.npmjs.org/-/v1/search?text=wayfinder&size=15)) already shows 2026-era companion tools that describe themselves as operating on "wayfinder maps" / wayfinder workflows (e.g. `@mingrath/wfdash`, `pi-wayfinder-guard`, `@wyattjoh/wayfinder-pi`), so the plain term is in live use in this project's own niche.
+
+## Strongest options
+
+`wayfinder-cli` is free exactly where a Node-distributed CLI needs it (npm unscoped + Homebrew core) but is already a fresh, active crate on crates.io, so a Rust distribution under the same name is off the table and search-term confusion with both the crate and Appvia's "Wayfinder CLI" is likely. The bare `wayfinder` is contested on both npm and crates.io and is heavily overloaded by Appvia, Laravel, AR.IO, and a video game. `wayfind` looks free-ish nowhere that matters: the npm package is a very active 2026 product in the same "AI-assisted engineering context" space — the worst possible neighbor. The fully clean candidates across all three registries are `skill-wayfinder`, `wayfndr`, and `wayf` (the last carrying mild confusion with the WAYF identity federation). Publishing under a scope is possible but unproven: no `@wayfinder/*` packages exist, yet scope-name ownership could not be verified anonymously. Per the ticket scope, no final pick is made here — that belongs to the follow-up decision ticket.
