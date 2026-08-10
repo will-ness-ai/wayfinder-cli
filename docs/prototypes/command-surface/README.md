@@ -97,6 +97,15 @@ map, and `init` is the repair path.)
   that each registered name resolves to an installed harness skill. Sections 3–5 of
   [transcript-2](transcript-2-project-setup.md) and the `ext` lines in
   [help-output](help-output.md) show the superseded model.
+- [Plugin system and marketplace spec](https://github.com/will-ness-ai/wayfinder-cli/issues/28)
+  ruled **plugins and the marketplace out of scope** for this effort. The CLI ships no
+  `plugin` command group: `plugin add`, `plugin list`, and `plugin remove` leave the
+  surface, and the deferred "Plugin content sync" item below dies with them. A skill that
+  core does not ship is an ordinary harness skill: the human installs it however the
+  harness distributes skills, then registers it with `ticket-skill add`. The whole of
+  [transcript-3](transcript-3-plugin-install.md), the `plugin` lines in
+  [help-output](help-output.md), and the plugin half of decision 4 show the superseded
+  model. Skill storage and distribution get their own map.
 
 ## Rejected alternatives (kept for the record)
 

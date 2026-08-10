@@ -74,13 +74,3 @@ _Avoid_: ticket link, embedded skill
 
 **Composition rule**:
 The rule that picks the mechanism for a cross-skill edge. Necessity decides whether the content is needed on every path; size decides the mechanism. Mandatory and small → inline at render. Conditional or large → CLI pointer (hard-worded when the edge is mandatory).
-
-### Plugins
-
-**Plugin**:
-A distributable bundle of ticket skills: the skill content for the harness plus its registrations.
-_Avoid_: extension pack, add-on
-
-**Marketplace**:
-The catalog where plugins are published and found.
-_Avoid_: registry
