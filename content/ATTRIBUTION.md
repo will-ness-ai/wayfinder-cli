@@ -17,7 +17,7 @@ Everything under `content/` is forked from [mattpocock/skills](https://github.co
 | `skills/prototype/` | `skills/engineering/prototype/` |
 | `skills/to-spec/` | `skills/engineering/to-spec/` |
 | `skills/to-tickets/` | `skills/engineering/to-tickets/` |
-| `trackers/github.md` | `skills/engineering/setup-matt-pocock-skills/issue-tracker-github.md` |
+| `trackers/github-cli.md` | `skills/engineering/setup-matt-pocock-skills/issue-tracker-github.md` |
 | `trackers/gitlab.md` | `skills/engineering/setup-matt-pocock-skills/issue-tracker-gitlab.md` |
 | `trackers/local.md` | `skills/engineering/setup-matt-pocock-skills/issue-tracker-local.md` |
 
@@ -26,6 +26,7 @@ Everything under `content/` is forked from [mattpocock/skills](https://github.co
 - Flattened upstream's category directories (`engineering/`, `productivity/`) — the eight skills sit directly under `skills/`.
 - The tracker docs are forked as standalone data under `trackers/` (upstream ships them inside its setup skill). They feed a later tracker-prose-substitution design.
 - Removed references to upstream content this repository does not carry: the upstream setup skill (its role here is replaced by CLI configuration), the `/triage` skill, and `triage-labels.md`.
+- `trackers/github.md` was renamed to `trackers/github-cli.md` and rewritten for the tracker prose substitution design (issue #24): one file per tracker value, no top-level heading (the render supplies the title), the `gh` 2.94.0 sub-issue and dependency flags promoted over `gh api`, the missing-label rule added, and the "PRs as a triage surface" section removed (it served the upstream `/triage` skill, which this repository does not carry).
 - No other content changes. Layout and composition are refined by later decisions on the wayfinder map (issue #1).
 
 ## Upstream license
