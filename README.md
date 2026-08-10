@@ -2,7 +2,7 @@
 
 A CLI that serves the wayfinder planning skills to coding agents as rendered, configurable content — with ticket-skill registration and tracker-specific prose.
 
-Status: planning. The effort is charted as a wayfinder map on this repo's issues.
+Status: planning. The effort is charted as a wayfinder map on this repo's issues. The locked v1 spec is [docs/spec/wayfinder-cli-v1.md](docs/spec/wayfinder-cli-v1.md).
 
 Skill content is forked and adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT).
 
