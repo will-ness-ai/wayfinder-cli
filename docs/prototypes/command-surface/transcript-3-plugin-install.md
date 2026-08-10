@@ -1,5 +1,10 @@
 # Transcript 3 — plugin install from git
 
+> **Superseded — kept as a record.**
+> [Plugin system and marketplace spec](https://github.com/will-ness-ai/wayfinder-cli/issues/28)
+> ruled plugins and the marketplace out of scope. The CLI ships no `plugin` command group.
+> See the [amendments](README.md#amendments).
+
 Scenario: same repo as transcript 2, tracker already `github cli`. The team wants the
 frontend-prototyping loop, which ships only as an example plugin — never in core.
 (The plugin system has its own upcoming spec; this transcript fixes only the command

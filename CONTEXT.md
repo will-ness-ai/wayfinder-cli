@@ -92,13 +92,3 @@ _Avoid_: tracker slot, substitution block
 **Notice-and-ask block**:
 The tracker block when config holds no tracker value. It reports the gap and asks the human to choose. It never stops with an error, and it never picks a tracker on its own.
 _Avoid_: fallback, default tracker
-
-### Plugins
-
-**Plugin**:
-A distributable bundle of ticket skills: the skill content for the harness plus its registrations.
-_Avoid_: extension pack, add-on
-
-**Marketplace**:
-The catalog where plugins are published and found.
-_Avoid_: registry
