@@ -23,8 +23,16 @@ The set of skill commands a ticket body carries. The charting agent plans it per
 _Avoid_: type mapping
 
 **Skill planning**:
-The section of wayfinder's render that lists the skills available for tickets, each with a firing condition. It renders from the skill registry: core entries built in, registered extensions appended.
+The section of wayfinder's render that lists the skills available for tickets, each with a firing condition. It renders from the skill registry: core entries built in, registered ticket skills appended.
 _Avoid_: ticket-type enum
+
+**Ticket skill**:
+A harness skill registered by name plus a required when sentence. Charting assigns it to each ticket where the sentence says it is relevant. The CLI points at it; the harness serves and invokes it.
+_Avoid_: extension, extension skill
+
+**When sentence**:
+The registrant-written relevance condition on a ticket skill. It renders in skill planning and decides which tickets carry the skill.
+_Avoid_: fires-when
 
 ### Skill composition
 
@@ -61,8 +69,18 @@ A CLI pointer whose wording states that the fetch is required and when ("At sess
 _Avoid_: strong pointer
 
 **Ticket-carried pointer**:
-A CLI pointer written into a ticket body at charting time. The session that claims the ticket runs the listed commands to load its context. A skill in a ticket's skill list is delivered this way, not through the host's prose.
+A skill pointer written into a ticket body at charting time. The session that claims the ticket runs the listed commands to load its context. A served skill points at `wayfinder skill <id>`; a ticket skill names the harness skill to invoke. A skill in a ticket's skill list is delivered this way, not through the host's prose.
 _Avoid_: ticket link, embedded skill
 
 **Composition rule**:
 The rule that picks the mechanism for a cross-skill edge. Necessity decides whether the content is needed on every path; size decides the mechanism. Mandatory and small → inline at render. Conditional or large → CLI pointer (hard-worded when the edge is mandatory).
+
+### Plugins
+
+**Plugin**:
+A distributable bundle of ticket skills: the skill content for the harness plus its registrations.
+_Avoid_: extension pack, add-on
+
+**Marketplace**:
+The catalog where plugins are published and found.
+_Avoid_: registry

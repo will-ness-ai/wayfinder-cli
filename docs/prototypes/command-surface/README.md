@@ -86,6 +86,18 @@ this prototype does not pre-empt it.
 (Stub sync is **not** deferred — it is decision 4: mutations auto-sync the stub's command
 map, and `init` is the repair path.)
 
+## Amendments
+
+- [Extension-skill registration schema and CRUD design](https://github.com/will-ness-ai/wayfinder-cli/issues/20)
+  replaced extensions with **ticketSkills**. A registration stores a harness skill name plus
+  a required when sentence — no source directory. The CLI points at harness skills; it never
+  serves them. The `ext` command group becomes `ticket-skill add/edit/remove/list`;
+  `--source`, `--host`, and `--during` are gone; registration mutations no longer touch the
+  stub (its command map lists served skills only); a new `wayfinder doctor` command checks
+  that each registered name resolves to an installed harness skill. Sections 3–5 of
+  [transcript-2](transcript-2-project-setup.md) and the `ext` lines in
+  [help-output](help-output.md) show the superseded model.
+
 ## Rejected alternatives (kept for the record)
 
 - Variant B (bare `wayfinder <name>`) — namespace collisions; reserved-name rule would leak
