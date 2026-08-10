@@ -75,6 +75,24 @@ _Avoid_: ticket link, embedded skill
 **Composition rule**:
 The rule that picks the mechanism for a cross-skill edge. Necessity decides whether the content is needed on every path; size decides the mechanism. Mandatory and small → inline at render. Conditional or large → CLI pointer (hard-worded when the edge is mandatory).
 
+### Trackers
+
+**Tracker value**:
+The free-text string in config that names this project's issue tracker (for example `github cli`). Lower case it and replace spaces with `-` to find the shipped tracker doc.
+_Avoid_: tracker name, tracker type
+
+**Tracker doc**:
+The operations prose for one tracker value: a file shipped in the CLI, or a file the project attaches with `tracker set --doc`. An attached doc replaces the shipped one.
+_Avoid_: tracker file, operations doc
+
+**Tracker block**:
+The block the render appends at the bottom of the wayfinder render. It holds the tracker doc, or a fallback when there is none. `wayfinder skill tracker` prints the same block alone.
+_Avoid_: tracker slot, substitution block
+
+**Notice-and-ask block**:
+The tracker block when config holds no tracker value. It reports the gap and asks the human to choose. It never stops with an error, and it never picks a tracker on its own.
+_Avoid_: fallback, default tracker
+
 ### Plugins
 
 **Plugin**:
