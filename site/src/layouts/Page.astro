@@ -1,0 +1,72 @@
+---
+/**
+ * The shell every page wears: the route, the top strip, the prose column, and
+ * — when the page passes a terminal — the third column.
+ *
+ * Three columns is the norm. A page that passes no terminal gets two, and its
+ * content runs the full width of the middle column. That is how a rendered
+ * skill page is built: it is already terminal output, so a terminal beside it
+ * would be dead space. Verdict 3.
+ */
+import '../styles/site.css';
+import type { CollectionEntry } from 'astro:content';
+import Route from '../components/Route.astro';
+import TopStrip from '../components/TopStrip.astro';
+import Terminal from '../components/Terminal.astro';
+import { station } from '../lib/nav';
+import { href } from '../lib/href';
+
+interface Props {
+  /** Which station of the route this page is. Must exist in the route. */
+  current: string;
+  /** The copy's `title`. The landing page's is the product name itself. */
+  title: string;
+  description: string;
+  /** Omit for a two-column page. */
+  terminal?: CollectionEntry<'copy'>['data']['terminal'];
+}
+
+const { current, title, description, terminal } = Astro.props;
+const here = await station(current);
+const documentTitle = title === 'wayfinder-cli' ? title : `${title} · wayfinder-cli`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Scrollbars and form controls follow the theme, not the browser default. -->
+    <meta name="color-scheme" content="light dark" />
+    <link rel="canonical" href={new URL(href(here.path), Astro.site)} />
+    <title>{documentTitle}</title>
+    <meta name="description" content={description} />
+
+    {/* No stamp on the root means the system setting decides. This runs before
+        the first paint, so an explicit choice never flashes the other theme.
+        Verdict 4. */}
+    <script is:inline>
+      try {
+        const choice = localStorage.getItem('wayfinder-theme');
+        if (choice === 'light' || choice === 'dark') {
+          document.documentElement.setAttribute('data-theme', choice);
+        }
+      } catch {
+        /* storage blocked — the system setting decides */
+      }
+    </script>
+  </head>
+
+  <body>
+    <div class:list={['page', { three: terminal }]}>
+      <Route current={current} />
+
+      <div class="col">
+        <TopStrip group={here.group} label={here.label} />
+        <main class="pad"><slot /></main>
+      </div>
+
+      {terminal && <Terminal terminal={terminal} />}
+    </div>
+  </body>
+</html>

@@ -1,0 +1,50 @@
+---
+/**
+ * The route — the sidebar. A vertical hairline with one dot per page.
+ *
+ * All 15 stations stay open, in four groups. The dot for the current page
+ * fills with the accent colour and takes a halo. Verdict 2 in
+ * docs/prototypes/docs-site/README.md.
+ *
+ * A station whose page is not built yet renders as a `<span>`, not an `<a>`.
+ * See `ready` in src/lib/nav.ts.
+ */
+import { route } from '../lib/nav';
+import { href } from '../lib/href';
+
+interface Props {
+  /** The station id of the page drawing this route. */
+  current: string;
+}
+
+const { current } = Astro.props;
+const groups = await route();
+---
+
+<div class="side">
+  <div class="brand"><a href={href('/')}>wayfinder</a></div>
+  <div class="ver">cli &middot; v1.0.0</div>
+
+  <nav class="route" aria-label="Site">
+    {
+      groups.map((group) => (
+        <>
+          {group.heading && <div class="grp">{group.heading}</div>}
+          {group.stations.map((s) =>
+            s.ready ? (
+              <a
+                href={href(s.path)}
+                class={s.id === current ? 'on' : undefined}
+                aria-current={s.id === current ? 'page' : undefined}
+              >
+                {s.label}
+              </a>
+            ) : (
+              <span title="This page is not written yet.">{s.label}</span>
+            ),
+          )}
+        </>
+      ))
+    }
+  </nav>
+</div>

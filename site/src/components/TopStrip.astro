@@ -1,0 +1,50 @@
+---
+/**
+ * The top strip: the crumb on the left, the theme control on the right.
+ * Sticky, 46px. The stdout block's header bar sticks directly below it.
+ *
+ * The control cycles system → light → dark. Its label is written by CSS from
+ * the `data-theme` stamp, not by script, so it is right in the first painted
+ * frame. Verdict 4.
+ */
+interface Props {
+  /** The group heading, or an empty string for an ungrouped station. */
+  group: string;
+  /** The station label. It is the bold part of the crumb. */
+  label: string;
+}
+
+const { group, label } = Astro.props;
+---
+
+<div class="strip">
+  <span class="crumb">{group && <>{group} / </>}<b>{label}</b></span>
+
+  <button id="theme-toggle" type="button" aria-label="Change the colour theme">
+    theme: <span class="theme-name"></span>
+  </button>
+</div>
+
+<script>
+  // The head script has already stamped the root. This only cycles it.
+  const ORDER = ['system', 'light', 'dark'] as const;
+  const KEY = 'wayfinder-theme';
+  const root = document.documentElement;
+
+  document.getElementById('theme-toggle')?.addEventListener('click', () => {
+    const now = root.getAttribute('data-theme') ?? 'system';
+    const next = ORDER[(ORDER.indexOf(now as (typeof ORDER)[number]) + 1) % ORDER.length]!;
+
+    if (next === 'system') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', next);
+
+    // A browser with storage blocked still toggles; the choice just does not
+    // survive the next page.
+    try {
+      if (next === 'system') localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, next);
+    } catch {
+      /* no storage — nothing to do */
+    }
+  });
+</script>
