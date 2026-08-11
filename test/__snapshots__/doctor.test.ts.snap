@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`wayfinder doctor > passes a ticket skill installed under any of the checked harness locations 1`] = `
+"problems: []
+"
+`;
+
+exports[`wayfinder doctor > reports a clean bill when nothing is registered and no doc is attached 1`] = `
+"problems: []
+"
+`;
+
+exports[`wayfinder doctor > reports a registered ticket skill that resolves to no installed harness skill 1`] = `
+"problems[1]{kind,subject,detail}:
+  ticket-skill,pre-mortem,"Ticket skill \\"pre-mortem\\" (project scope) resolves to no installed harness skill. Install it in a harness, or remove it with \`wayfinder ticket-skill remove pre-mortem\`."
+"
+`;
+
+exports[`wayfinder doctor > reports a tracker doc path that does not resolve 1`] = `
+"problems[1]{kind,subject,detail}:
+  tracker-doc,./missing.md,"Tracker doc \\"./missing.md\\" (project scope) does not resolve to a file. Fix the path with \`wayfinder tracker set --doc <path>\`, or clear it."
+"
+`;

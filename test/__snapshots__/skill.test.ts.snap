@@ -1,0 +1,881 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`wayfinder skill <id> > renders domain-modeling against a committed snapshot 1`] = `
+"# Domain Modeling
+
+Actively build and sharpen the project's domain model as you design. This is the *active* discipline — challenging terms, inventing edge-case scenarios, and writing the glossary and decisions down the moment they crystallise. (Merely *reading* \`CONTEXT.md\` for vocabulary is not this skill — that's a one-line habit any skill can do. This skill is for when you're changing the model, not just consuming it.)
+
+## File structure
+
+Most repos have a single context:
+
+\`\`\`
+/
+├── CONTEXT.md
+├── docs/
+│   └── adr/
+│       ├── 0001-event-sourced-orders.md
+│       └── 0002-postgres-for-write-model.md
+└── src/
+\`\`\`
+
+If a \`CONTEXT-MAP.md\` exists at the root, the repo has multiple contexts. The map points to where each one lives:
+
+\`\`\`
+/
+├── CONTEXT-MAP.md
+├── docs/
+│   └── adr/                          ← system-wide decisions
+├── src/
+│   ├── ordering/
+│   │   ├── CONTEXT.md
+│   │   └── docs/adr/                 ← context-specific decisions
+│   └── billing/
+│       ├── CONTEXT.md
+│       └── docs/adr/
+\`\`\`
+
+Create files lazily — only when you have something to write. If no \`CONTEXT.md\` exists, create one when the first term is resolved. If no \`docs/adr/\` exists, create it when the first ADR is needed.
+
+## During the session
+
+### Challenge against the glossary
+
+When the user uses a term that conflicts with the existing language in \`CONTEXT.md\`, call it out immediately. "Your glossary defines 'cancellation' as X, but you seem to mean Y — which is it?"
+
+### Sharpen fuzzy language
+
+When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
+
+### Discuss concrete scenarios
+
+When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
+
+### Cross-reference with code
+
+When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
+
+### Update CONTEXT.md inline
+
+When a term is resolved, update \`CONTEXT.md\` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
+
+\`CONTEXT.md\` should be totally devoid of implementation details. Do not treat \`CONTEXT.md\` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
+
+### Offer ADRs sparingly
+
+Only offer to create an ADR when all three are true:
+
+1. **Hard to reverse** — the cost of changing your mind later is meaningful
+2. **Surprising without context** — a future reader will wonder "why did they do it this way?"
+3. **The result of a real trade-off** — there were genuine alternatives and you picked one for specific reasons
+
+If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).
+
+## Disclosed files
+
+- \`wayfinder skill domain-modeling/adr-format\` — when you are recording an architectural decision
+- \`wayfinder skill domain-modeling/context-format\` — when you are writing or updating the glossary
+"
+`;
+
+exports[`wayfinder skill <id> > renders domain-modeling/adr-format against a committed snapshot 1`] = `
+"# ADR Format
+
+ADRs live in \`docs/adr/\` and use sequential numbering: \`0001-slug.md\`, \`0002-slug.md\`, etc.
+
+Create the \`docs/adr/\` directory lazily — only when the first ADR is needed.
+
+## Template
+
+\`\`\`md
+# {Short title of the decision}
+
+{1-3 sentences: what's the context, what did we decide, and why.}
+\`\`\`
+
+That's it. An ADR can be a single paragraph. The value is in recording *that* a decision was made and *why* — not in filling out sections.
+
+## Optional sections
+
+Only include these when they add genuine value. Most ADRs won't need them.
+
+- **Status** frontmatter (\`proposed | accepted | deprecated | superseded by ADR-NNNN\`) — useful when decisions are revisited
+- **Considered Options** — only when the rejected alternatives are worth remembering
+- **Consequences** — only when non-obvious downstream effects need to be called out
+
+## Numbering
+
+Scan \`docs/adr/\` for the highest existing number and increment by one.
+
+## When to offer an ADR
+
+All three of these must be true:
+
+1. **Hard to reverse** — the cost of changing your mind later is meaningful
+2. **Surprising without context** — a future reader will look at the code and wonder "why on earth did they do it this way?"
+3. **The result of a real trade-off** — there were genuine alternatives and you picked one for specific reasons
+
+If a decision is easy to reverse, skip it — you'll just reverse it. If it's not surprising, nobody will wonder why. If there was no real alternative, there's nothing to record beyond "we did the obvious thing."
+
+### What qualifies
+
+- **Architectural shape.** "We're using a monorepo." "The write model is event-sourced, the read model is projected into Postgres."
+- **Integration patterns between contexts.** "Ordering and Billing communicate via domain events, not synchronous HTTP."
+- **Technology choices that carry lock-in.** Database, message bus, auth provider, deployment target. Not every library — just the ones that would take a quarter to swap out.
+- **Boundary and scope decisions.** "Customer data is owned by the Customer context; other contexts reference it by ID only." The explicit no-s are as valuable as the yes-s.
+- **Deliberate deviations from the obvious path.** "We're using manual SQL instead of an ORM because X." Anything where a reasonable reader would assume the opposite. These stop the next engineer from "fixing" something that was deliberate.
+- **Constraints not visible in the code.** "We can't use AWS because of compliance requirements." "Response times must be under 200ms because of the partner API contract."
+- **Rejected alternatives when the rejection is non-obvious.** If you considered GraphQL and picked REST for subtle reasons, record it — otherwise someone will suggest GraphQL again in six months.
+"
+`;
+
+exports[`wayfinder skill <id> > renders domain-modeling/context-format against a committed snapshot 1`] = `
+"# CONTEXT.md Format
+
+## Structure
+
+\`\`\`md
+# {Context Name}
+
+{One or two sentence description of what this context is and why it exists.}
+
+## Language
+
+**Order**:
+{A one or two sentence description of the term}
+_Avoid_: Purchase, transaction
+
+**Invoice**:
+A request for payment sent to a customer after delivery.
+_Avoid_: Bill, payment request
+
+**Customer**:
+A person or organization that places orders.
+_Avoid_: Client, buyer, account
+\`\`\`
+
+## Rules
+
+- **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others under \`_Avoid_\`.
+- **Keep definitions tight.** One or two sentences max. Define what it IS, not what it does.
+- **Only include terms specific to this project's context.** General programming concepts (timeouts, error types, utility patterns) don't belong even if the project uses them extensively. Before adding a term, ask: is this a concept unique to this context, or a general programming concept? Only the former belongs.
+- **Group terms under subheadings** when natural clusters emerge. If all terms belong to a single cohesive area, a flat list is fine.
+
+## Single vs multi-context repos
+
+**Single context (most repos):** One \`CONTEXT.md\` at the repo root.
+
+**Multiple contexts:** A \`CONTEXT-MAP.md\` at the repo root lists the contexts, where they live, and how they relate to each other:
+
+\`\`\`md
+# Context Map
+
+## Contexts
+
+- [Ordering](./src/ordering/CONTEXT.md) — receives and tracks customer orders
+- [Billing](./src/billing/CONTEXT.md) — generates invoices and processes payments
+- [Fulfillment](./src/fulfillment/CONTEXT.md) — manages warehouse picking and shipping
+
+## Relationships
+
+- **Ordering → Fulfillment**: Ordering emits \`OrderPlaced\` events; Fulfillment consumes them to start picking
+- **Fulfillment → Billing**: Fulfillment emits \`ShipmentDispatched\` events; Billing consumes them to generate invoices
+- **Ordering ↔ Billing**: Shared types for \`CustomerId\` and \`Money\`
+\`\`\`
+
+The skill infers which structure applies:
+
+- If \`CONTEXT-MAP.md\` exists, read it to find contexts
+- If only a root \`CONTEXT.md\` exists, single context
+- If neither exists, create a root \`CONTEXT.md\` lazily when the first term is resolved
+
+When multiple contexts exist, infer which one the current topic relates to. If unclear, ask.
+"
+`;
+
+exports[`wayfinder skill <id> > renders grill-with-docs against a committed snapshot 1`] = `
+"Interview me relentlessly about every aspect of this until we reach a shared understanding. Walk down each branch of the decision tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time, waiting for feedback on each question before continuing. Asking multiple questions at once is bewildering.
+
+If a *fact* can be found by exploring the environment (filesystem, tools, etc.), look it up rather than asking me. The *decisions*, though, are mine — put each one to me and wait for my answer.
+
+Do not act on it until I confirm we have reached a shared understanding.
+
+## Domain Modeling
+
+Actively build and sharpen the project's domain model as you design. This is the *active* discipline — challenging terms, inventing edge-case scenarios, and writing the glossary and decisions down the moment they crystallise. (Merely *reading* \`CONTEXT.md\` for vocabulary is not this skill — that's a one-line habit any skill can do. This skill is for when you're changing the model, not just consuming it.)
+
+### File structure
+
+Most repos have a single context:
+
+\`\`\`
+/
+├── CONTEXT.md
+├── docs/
+│   └── adr/
+│       ├── 0001-event-sourced-orders.md
+│       └── 0002-postgres-for-write-model.md
+└── src/
+\`\`\`
+
+If a \`CONTEXT-MAP.md\` exists at the root, the repo has multiple contexts. The map points to where each one lives:
+
+\`\`\`
+/
+├── CONTEXT-MAP.md
+├── docs/
+│   └── adr/                          ← system-wide decisions
+├── src/
+│   ├── ordering/
+│   │   ├── CONTEXT.md
+│   │   └── docs/adr/                 ← context-specific decisions
+│   └── billing/
+│       ├── CONTEXT.md
+│       └── docs/adr/
+\`\`\`
+
+Create files lazily — only when you have something to write. If no \`CONTEXT.md\` exists, create one when the first term is resolved. If no \`docs/adr/\` exists, create it when the first ADR is needed.
+
+### During the session
+
+#### Challenge against the glossary
+
+When the user uses a term that conflicts with the existing language in \`CONTEXT.md\`, call it out immediately. "Your glossary defines 'cancellation' as X, but you seem to mean Y — which is it?"
+
+#### Sharpen fuzzy language
+
+When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
+
+#### Discuss concrete scenarios
+
+When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
+
+#### Cross-reference with code
+
+When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
+
+#### Update CONTEXT.md inline
+
+When a term is resolved, update \`CONTEXT.md\` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
+
+\`CONTEXT.md\` should be totally devoid of implementation details. Do not treat \`CONTEXT.md\` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
+
+#### Offer ADRs sparingly
+
+Only offer to create an ADR when all three are true:
+
+1. **Hard to reverse** — the cost of changing your mind later is meaningful
+2. **Surprising without context** — a future reader will wonder "why did they do it this way?"
+3. **The result of a real trade-off** — there were genuine alternatives and you picked one for specific reasons
+
+If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).
+
+## Disclosed files
+
+- \`wayfinder skill domain-modeling/adr-format\` — when you are recording an architectural decision
+- \`wayfinder skill domain-modeling/context-format\` — when you are writing or updating the glossary
+"
+`;
+
+exports[`wayfinder skill <id> > renders grilling against a committed snapshot 1`] = `
+"Interview me relentlessly about every aspect of this until we reach a shared understanding. Walk down each branch of the decision tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time, waiting for feedback on each question before continuing. Asking multiple questions at once is bewildering.
+
+If a *fact* can be found by exploring the environment (filesystem, tools, etc.), look it up rather than asking me. The *decisions*, though, are mine — put each one to me and wait for my answer.
+
+Do not act on it until I confirm we have reached a shared understanding.
+"
+`;
+
+exports[`wayfinder skill <id> > renders prototype against a committed snapshot 1`] = `
+"# Prototype
+
+A prototype is **throwaway code that answers a question**. The question decides the shape.
+
+## Pick a branch
+
+Identify which question is being answered — from the user's prompt, the surrounding code, or by asking if the user is around:
+
+- **"Does this logic / state model feel right?"** → [LOGIC.md](LOGIC.md). Build a tiny interactive terminal app that pushes the state machine through cases that are hard to reason about on paper.
+- **"What should this look like?"** → [UI.md](UI.md). Generate several radically different UI variations on a single route, switchable via a URL search param and a floating bottom bar.
+
+The two branches produce very different artifacts — getting this wrong wastes the whole prototype. If the question is genuinely ambiguous and the user isn't reachable, default to whichever branch better matches the surrounding code (a backend module → logic; a page or component → UI) and state the assumption at the top of the prototype.
+
+## Rules that apply to both
+
+1. **Throwaway from day one, and clearly marked as such.** Locate the prototype code close to where it will actually be used (next to the module or page it's prototyping for) so context is obvious — but name it so a casual reader can see it's a prototype, not production. For throwaway UI routes, obey whatever routing convention the project already uses; don't invent a new top-level structure.
+2. **One command to run.** Whatever the project's existing task runner supports — \`pnpm <name>\`, \`python <path>\`, \`bun <path>\`, etc. The user must be able to start it without thinking.
+3. **No persistence by default.** State lives in memory. Persistence is the thing the prototype is _checking_, not something it should depend on. If the question explicitly involves a database, hit a scratch DB or a local file with a clear "PROTOTYPE — wipe me" name.
+4. **Skip the polish.** No tests, no error handling beyond what makes the prototype _runnable_, no abstractions. The point is to learn something fast.
+5. **Surface the state.** After every action (logic) or on every variant switch (UI), print or render the full relevant state so the user can see what changed.
+6. **Capture it when done.** Fold any validated decision into the real code, then capture the prototype itself as a **primary source**: commit it to a throwaway branch, out of main, and leave a context pointer to that branch on the implementation issue. Capture the answer too — the verdict and the question it settled — in the issue or a commit. The main branch keeps only the validated decision.
+
+## Disclosed files
+
+- \`wayfinder skill prototype/logic\` — when the question is whether a logic or state model feels right
+- \`wayfinder skill prototype/ui\` — when the question is what a UI should look like
+"
+`;
+
+exports[`wayfinder skill <id> > renders prototype/logic against a committed snapshot 1`] = `
+"# Logic Prototype
+
+A tiny interactive terminal app that lets the user drive a state model by hand. Use this when the question is about **business logic, state transitions, or data shape** — the kind of thing that looks reasonable on paper but only feels wrong once you push it through real cases.
+
+## When this is the right shape
+
+- "I'm not sure if this state machine handles the edge case where X then Y."
+- "Does this data model actually let me represent the case where..."
+- "I want to feel out what the API should look like before writing it."
+- Anything where the user wants to **press buttons and watch state change**.
+
+If the question is "what should this look like" — wrong branch. Use [UI.md](UI.md).
+
+## Process
+
+### 1. State the question
+
+Before writing code, write down what state model and what question you're prototyping. One paragraph, in the prototype's README or a comment at the top of the file. A logic prototype that answers the wrong question is pure waste — make the question explicit so it can be checked later, whether the user is watching now or returning to it AFK.
+
+### 2. Pick the language
+
+Use whatever the host project uses. If the project has no obvious runtime (e.g. a docs repo), ask.
+
+Match the project's existing conventions for tooling — don't add a new package manager or runtime just for the prototype.
+
+### 3. Isolate the logic in a portable module
+
+Put the actual logic — the bit that's answering the question — behind a small, pure interface that could be lifted out and dropped into the real codebase later. The TUI around it is throwaway; the logic module shouldn't be.
+
+The right shape depends on the question:
+
+- **A pure reducer** — \`(state, action) => state\`. Good when actions are discrete events and state is a single value.
+- **A state machine** — explicit states and transitions. Good when "which actions are even legal right now" is part of the question.
+- **A small set of pure functions** over a plain data type. Good when there's no implicit current state — just transformations.
+- **A class or module with a clear method surface** when the logic genuinely owns ongoing internal state.
+
+Pick whichever shape best fits the question being asked, *not* whichever is easiest to wire to a TUI. Keep it pure: no I/O, no terminal code, no \`console.log\` for control flow. The TUI imports it and calls into it; nothing flows the other direction.
+
+This is what makes the prototype useful past its own lifetime: when the question's been answered, the validated reducer / machine / function set can be lifted into the real module on its own.
+
+### 4. Build the smallest TUI that exposes the state
+
+Build it as a **lightweight TUI** — on every tick, clear the screen (\`console.clear()\` / \`print("\\033[2J\\033[H")\` / equivalent) and re-render the whole frame. The user should always see one stable view, not an ever-growing scrollback.
+
+Each frame has two parts, in this order:
+
+1. **Current state**, pretty-printed and diff-friendly (one field per line, or formatted JSON). Use **bold** for field names or section headers and **dim** for less important context (timestamps, IDs, derived values). Native ANSI escape codes are fine — \`\\x1b[1m\` bold, \`\\x1b[2m\` dim, \`\\x1b[0m\` reset. No need to pull in a styling library unless one is already in the project.
+2. **Keyboard shortcuts**, listed at the bottom: \`[a] add user  [d] delete user  [t] tick clock  [q] quit\`. Bold the key, dim the description, or vice-versa — whatever reads cleanly.
+
+Behaviour:
+
+1. **Initialise state** — a single in-memory object/struct. Render the first frame on start.
+2. **Read one keystroke (or one line)** at a time, dispatch to a handler that mutates state.
+3. **Re-render** the full frame after every action — don't append, replace.
+4. **Loop until quit.**
+
+The whole frame should fit on one screen.
+
+### 5. Make it runnable in one command
+
+Add a script to the project's existing task runner (\`package.json\` scripts, \`Makefile\`, \`justfile\`, \`pyproject.toml\`). The user should run \`pnpm run <prototype-name>\` or equivalent — never need to remember a path.
+
+If the host project has no task runner, just put the command at the top of the prototype's README.
+
+### 6. Hand it over
+
+Give the user the run command. They'll drive it themselves; the interesting moments are when they say "wait, that shouldn't be possible" or "huh, I assumed X would be different" — those are the bugs in the _idea_, which is the whole point. If they want new actions added, add them. Prototypes evolve.
+
+### 7. Capture the answer and the prototype
+
+Once the prototype has answered its question, capture the answer, then capture the prototype the way the [SKILL](SKILL.md) describes. The logic-specific mapping: the validated reducer / machine / function set lifts into the real module (the decision, absorbed); the TUI shell rides along to the throwaway branch that keeps the prototype as a primary source.
+
+## Anti-patterns
+
+- **Don't add tests.** A prototype that needs tests is no longer a prototype.
+- **Don't wire it to the real database.** Use an in-memory store unless the question is specifically about persistence.
+- **Don't generalise.** No "what if we wanted to support X later." The prototype answers one question.
+- **Don't blur the logic and the TUI together.** If the reducer / state machine references \`console.log\`, prompts, or terminal escape codes, it's no longer portable. Keep the TUI as a thin shell over a pure module.
+- **Don't ship the TUI shell into production.** The shell is optimised for being driven by hand from a terminal. The logic module behind it is the bit worth keeping.
+"
+`;
+
+exports[`wayfinder skill <id> > renders prototype/ui against a committed snapshot 1`] = `
+"# UI Prototype
+
+Generate **several radically different UI variations** on a single route, switchable from a floating bottom bar. The user flips between variants in the browser, picks one (or steals bits from each), then throws the rest away.
+
+If the question is about logic/state rather than what something looks like — wrong branch. Use [LOGIC.md](LOGIC.md).
+
+## When this is the right shape
+
+- "What should this page look like?"
+- "I want to see a few options for this dashboard before committing."
+- "Try a different layout for the settings screen."
+- Any time the user would otherwise spend a day picking between three vague mockups in their head.
+
+## Two sub-shapes — strongly prefer sub-shape A
+
+A UI prototype is much easier to judge when it's **butting up against the rest of the app** — real header, real sidebar, real data, real density. A throwaway route on its own is a vacuum: every variant looks fine in isolation. Default to sub-shape A whenever there's a plausible existing page to host the variants. Only reach for sub-shape B if the prototype genuinely has no nearby home.
+
+### Sub-shape A — adjustment to an existing page (preferred)
+
+The route already exists. Variants are rendered **on the same route**, gated by a \`?variant=\` URL search param. The existing data fetching, params, and auth all stay — only the rendering swaps. This is the default; pick it unless there's a specific reason not to.
+
+If the prototype is for something that doesn't yet have a page but *would naturally live inside one* (a new section of the dashboard, a new card on the settings screen, a new step in an existing flow) — that's still sub-shape A. Mount the variants inside the host page.
+
+### Sub-shape B — a new page (last resort)
+
+Only use this when the thing being prototyped genuinely has no existing page to live inside — e.g. an entirely new top-level surface, or a flow that can't be embedded anywhere sensible.
+
+Create a **throwaway route** following whatever routing convention the project already uses — don't invent a new top-level structure. Name it so it's obviously a prototype (e.g. include the word \`prototype\` in the path or filename). Same \`?variant=\` pattern.
+
+Before committing to sub-shape B, sanity-check: is there really no existing page this could be embedded in? An empty route hides design problems that a populated one would expose.
+
+In both sub-shapes the floating bottom bar is identical.
+
+## Process
+
+### 1. State the question and pick N
+
+Default to **3 variants**. More than 5 stops being radically different and starts being noise — cap there.
+
+Write down the plan in one line, in the prototype's location or a top-of-file comment:
+
+> "Three variants of the settings page, switchable via \`?variant=\`, on the existing \`/settings\` route."
+
+This works whether the user is here to push back or not.
+
+### 2. Generate radically different variants
+
+Draft each variant. Hold each one to:
+
+- The page's purpose and the data it has access to.
+- The project's component library / styling system (TailwindCSS, shadcn, MUI, plain CSS, whatever).
+- A clear exported component name, e.g. \`VariantA\`, \`VariantB\`, \`VariantC\`.
+
+Variants must be **structurally different** — different layout, different information hierarchy, different primary affordance, not just different colours. Three slightly-tweaked card grids isn't a UI prototype, it's wallpaper. If two drafts come out too similar, redo one with explicit "do not use a card grid" guidance.
+
+### 3. Wire them together
+
+Create a single switcher component on the route:
+
+\`\`\`tsx
+// pseudo-code — adapt to the project's framework
+const variant = searchParams.get('variant') ?? 'A';
+return (
+  <>
+    {variant === 'A' && <VariantA {...data} />}
+    {variant === 'B' && <VariantB {...data} />}
+    {variant === 'C' && <VariantC {...data} />}
+    <PrototypeSwitcher variants={['A','B','C']} current={variant} />
+  </>
+);
+\`\`\`
+
+For sub-shape A (existing page): keep all the existing data fetching above the switcher; only the rendered subtree changes per variant.
+
+For sub-shape B (new page): the throwaway route under \`/prototype/<name>\` mounts the same switcher.
+
+### 4. Build the floating switcher
+
+A small fixed-position bar at the bottom-centre of the screen with three pieces:
+
+- **Left arrow** — cycles to the previous variant (wraps around).
+- **Variant label** — shows the current variant key and, if the variant exports a name, that name too. e.g. \`B — Sidebar layout\`.
+- **Right arrow** — cycles forward (wraps around).
+
+Behaviour:
+
+- Clicking an arrow updates the URL search param (use the framework's router — \`router.replace\` on Next, \`navigate\` on React Router, etc) so the variant is shareable and reload-stable.
+- Keyboard: \`←\` and \`→\` arrow keys also cycle. Don't intercept arrow keys when an \`<input>\`, \`<textarea>\`, or \`[contenteditable]\` is focused.
+- Visually distinct from the page (e.g. high-contrast pill, subtle shadow) so it's obviously not part of the design being evaluated.
+- Hidden in production builds — gate on \`process.env.NODE_ENV !== 'production'\` or an equivalent check, so a stray prototype merge can't ship the bar to users.
+
+Put the switcher in a single shared component so both sub-shapes can reuse it. Locate it wherever shared UI lives in the project.
+
+### 5. Hand it over
+
+Surface the URL (and the \`?variant=\` keys). The user will flip through whenever they get to it. The interesting feedback is usually **"I want the header from B with the sidebar from C"** — that's the actual design they want.
+
+### 6. Capture the answer and clean up
+
+Once a variant has won, capture the answer — which variant and why — then capture the prototype the way the [SKILL](SKILL.md) describes. Fold the winner into the real code and move the rest onto the throwaway branch, not into main:
+
+- **Sub-shape A** — fold the winner into the existing page; drop the losing variants and the switcher from main.
+- **Sub-shape B** — promote the winning variant to a real route; drop the throwaway route and the switcher from main.
+
+The full set of variants is the primary source, so it lands on the throwaway branch, not the bin — variant components and the switcher left in the main branch rot fast and confuse the next reader.
+
+## Anti-patterns
+
+- **Variants that differ only in colour or copy.** That's a tweak, not a prototype. Real variants disagree about structure.
+- **Sharing too much code between variants.** A shared \`<Header>\` is fine; a shared \`<Layout>\` defeats the point. Each variant should be free to throw out the layout.
+- **Wiring variants to real mutations.** Read-only prototypes are fine. If a variant needs to mutate, point it at a stub — the question is "what should this look like", not "does the backend work".
+- **Promoting the prototype directly to production.** The variant code was written under prototype constraints (no tests, minimal error handling). Rewrite it properly when you fold it in.
+"
+`;
+
+exports[`wayfinder skill <id> > renders research against a committed snapshot 1`] = `
+"Spin up a **background agent** to do the research, so you keep working while it reads.
+
+Its job:
+
+1. Investigate the question against **primary sources** — official docs, source code, specs, first-party APIs — not a secondary write-up of them. Follow every claim back to the source that owns it.
+2. Write the findings to a single Markdown file, citing each claim's source.
+3. Save it where the repo already keeps such notes; match the existing convention, and if there is none, put it somewhere sensible and say where.
+"
+`;
+
+exports[`wayfinder skill <id> > renders to-spec against a committed snapshot 1`] = `
+"This skill takes the current conversation context and codebase understanding and produces a spec (you may know this document as a PRD). Do NOT interview the user — just synthesize what you already know.
+
+No issue tracker is configured for this repo. Run \`wayfinder skill tracker\` to choose one before you publish.
+
+## Process
+
+1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.
+
+2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
+
+Check with the user that these seams match their expectations.
+
+3. Write the spec using the template below, then publish it to the project issue tracker. Apply the \`ready-for-agent\` triage label - no need for additional triage.
+
+<spec-template>
+
+## Problem Statement
+
+The problem that the user is facing, from the user's perspective.
+
+## Solution
+
+The solution to the problem, from the user's perspective.
+
+## User Stories
+
+A LONG, numbered list of user stories. Each user story should be in the format of:
+
+1. As an <actor>, I want a <feature>, so that <benefit>
+
+<user-story-example>
+1. As a mobile bank customer, I want to see balance on my accounts, so that I can make better informed decisions about my spending
+</user-story-example>
+
+This list of user stories should be extremely extensive and cover all aspects of the feature.
+
+## Implementation Decisions
+
+A list of implementation decisions that were made. This can include:
+
+- The modules that will be built/modified
+- The interfaces of those modules that will be modified
+- Technical clarifications from the developer
+- Architectural decisions
+- Schema changes
+- API contracts
+- Specific interactions
+
+Do NOT include specific file paths or code snippets. They may end up being outdated very quickly.
+
+Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it within the relevant decision and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+
+## Testing Decisions
+
+A list of testing decisions that were made. Include:
+
+- A description of what makes a good test (only test external behavior, not implementation details)
+- Which modules will be tested
+- Prior art for the tests (i.e. similar types of tests in the codebase)
+
+## Out of Scope
+
+A description of the things that are out of scope for this spec.
+
+## Further Notes
+
+Any further notes about the feature.
+
+</spec-template>
+"
+`;
+
+exports[`wayfinder skill <id> > renders to-tickets against a committed snapshot 1`] = `
+"# To Tickets
+
+Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
+
+No issue tracker is configured for this repo. Run \`wayfinder skill tracker\` to choose one before you publish.
+
+## Process
+
+### 1. Gather context
+
+Work from whatever is already in the conversation context. If the user passes a reference (a spec path, an issue number or URL) as an argument, fetch it and read its full body and comments.
+
+### 2. Explore the codebase (optional)
+
+If you have not already explored the codebase, do so to understand the current state of the code. Ticket titles and descriptions should use the project's domain glossary vocabulary, and respect ADRs in the area you're touching.
+
+Look for opportunities to prefactor the code to make the implementation easier. "Make the change easy, then make the easy change."
+
+### 3. Draft vertical slices
+
+Break the work into **tracer bullet** tickets.
+
+<vertical-slice-rules>
+
+- Each slice cuts a narrow but COMPLETE path through every layer (schema, API, UI, tests) — vertical, NOT a horizontal slice of one layer
+- A completed slice is demoable or verifiable on its own
+- Each slice is sized to fit in a single fresh context window
+- Any prefactoring should be done first
+
+</vertical-slice-rules>
+
+Give each ticket its **blocking edges** — the other tickets that must complete before it can start. A ticket with no blockers can start immediately.
+
+**Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change — rename a column, retype a shared symbol — whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket — green is promised only there.
+
+### 4. Quiz the user
+
+Present the proposed breakdown as a numbered list. For each ticket, show:
+
+- **Title**: short descriptive name
+- **Blocked by**: which other tickets (if any) must complete first
+- **What it delivers**: the end-to-end behaviour this ticket makes work
+
+Ask the user:
+
+- Does the granularity feel right? (too coarse / too fine)
+- Are the blocking edges correct — does each ticket only depend on tickets that genuinely gate it?
+- Should any tickets be merged or split further?
+
+Iterate until the user approves the breakdown.
+
+### 5. Publish the tickets to the configured tracker
+
+Publish the approved tickets. **How** depends on the tracker configured for this repo — the tickets are the same either way, only the shape of the blocking edges changes:
+
+- **Local files** → write one file per ticket under \`.scratch/<feature-slug>/issues/<NN>-<slug>.md\`, numbered from \`01\` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below — one ticket per file, never a single combined file.
+- **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the \`ready-for-agent\` triage label unless instructed otherwise — the tickets are agent-grabbable by construction.
+
+Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
+
+Do NOT close or modify any parent issue.
+
+<local-ticket-template>
+
+# <NN> — <Ticket title>
+
+**What to build:** the end-to-end behaviour this ticket makes work, from the user's perspective — not a layer-by-layer implementation list.
+
+**Blocked by:** the numbers/titles of the tickets that gate this one, or "None — can start immediately".
+
+**Status:** ready-for-agent
+
+- [ ] Acceptance criterion 1
+- [ ] Acceptance criterion 2
+
+</local-ticket-template>
+
+<issue-template>
+
+## Parent
+
+A reference to the parent issue on the tracker (if the source was an existing issue, otherwise omit this section).
+
+## What to build
+
+The end-to-end behaviour this ticket makes work, from the user's perspective — not layer-by-layer implementation.
+
+## Acceptance criteria
+
+- [ ] Criterion 1
+- [ ] Criterion 2
+
+## Blocked by
+
+- A reference to each blocking ticket, or "None — can start immediately".
+
+</issue-template>
+
+In either form, avoid specific file paths or code snippets — they go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+"
+`;
+
+exports[`wayfinder skill <id> > renders tracker against a committed snapshot 1`] = `
+"## Issue tracker
+
+No issue tracker is configured for this repo, so there is no operations prose to load.
+
+Ask the human to choose one, and do not pick a tracker on your own:
+
+- Use the local markdown tracker — run \`wayfinder tracker set local\`.
+- Name this repo's tracker — run \`wayfinder tracker set "<value>"\`, for example \`wayfinder tracker set "github cli"\`.
+"
+`;
+
+exports[`wayfinder skill <id> > renders wayfinder against a committed snapshot 1`] = `
+"A loose idea has arrived — too big for one agent session, and wrapped in fog: the way from here to the **destination** isn't visible yet. Wayfinding is about finding that way, not charging at the destination. This skill charts the way as a **shared map** on the repo's issue tracker, then works its **decision tickets** — questions whose resolution is a decision, not slices of a build to execute — one at a time until the route is clear.
+
+The destination varies per effort, and naming it is the first act of charting — it shapes every ticket. It might be a spec to hand off and iterate on, a decision to lock before planning starts, or a change made in place like a data-structure migration. The map is domain-agnostic — engineering work, course content, whatever fits the shape.
+
+## Plan, don't do
+
+Wayfinder is **planning** by default: each ticket resolves a decision, and the map is done when the way is clear — nothing left to decide before someone goes and does the thing. The pull to just do the work is usually the signal you've reached the edge of the map and it's time to hand off. An effort can override this in its **Notes** — carrying execution into the map itself — but absent that, produce decisions, not deliverables.
+
+## Refer by name
+
+Every map and ticket is an issue, so it has a **name** — its title. In everything the human reads — narration, the map's Decisions-so-far — refer to it by that name, never by a bare id, number, or slug. A wall of \`#42, #43, #44\` is illegible; names read at a glance. The id and URL don't vanish — a name wraps its link — but they ride *inside* the name, never stand in for it.
+
+## The Map
+
+The map is a single issue on this repo's issue tracker, labelled \`wayfinder:map\` — the canonical artifact. Its tickets are child issues of the map.
+
+The map is an **index**, not a store. It lists the decisions made and points at the tickets that hold their detail; a decision lives in exactly one place — its ticket — so the map never restates it, only gists it and links.
+
+**Where the map, its child tickets, blocking, and frontier queries physically live is tracker-specific.** This repo's tracker and its operations prose sit at the bottom of this skill, under **Issue tracker**. Consult that block's "Wayfinding operations" section for how _this_ repo expresses them. If no tracker is configured, the block tells you how to choose one — never guess a tracker or reach for a local fallback on your own.
+
+### The map body
+
+The whole map at low resolution, loaded once per session. Open tickets are **not** listed — they are open child issues, found by query.
+
+\`\`\`markdown
+## Destination
+
+<what reaching the end of this map looks like — the spec, decision, or change this effort is finding its way to. One or two lines; every session orients to it before choosing a ticket.>
+
+## Notes
+
+<domain; skills every session should consult; standing preferences for this effort>
+
+## Decisions so far
+
+<!-- the index — one line per closed ticket: enough to judge relevance, then zoom the link for the detail the ticket holds -->
+
+- [<closed ticket title>](link) — <one-line gist of the answer>
+
+## Not yet specified
+
+<!-- see "Fog of war": in-scope fog you can't ticket yet; graduates as the frontier advances -->
+
+## Out of scope
+
+<!-- see "Out of scope": work ruled beyond the destination; closed, never graduates -->
+\`\`\`
+
+### Tickets
+
+Each ticket is a **child issue** of the map; the tracker's issue id is its identity. Its body is the question, sized to one 100K token agent session:
+
+\`\`\`markdown
+## Question
+
+<the decision or investigation this ticket resolves>
+\`\`\`
+
+Each ticket carries a \`wayfinder:<type>\` label — one of \`grilling\`, \`research\`, \`prototype\`, \`task\` (see [Skill planning](#skill-planning)).
+
+A session **claims** a ticket by assigning it to the dev driving the map, **first**, before any work, so concurrent sessions skip it. That assignee _is_ the claim: an open, unassigned ticket is unclaimed.
+
+Blocking uses the tracker's **native** dependency relationship — essential because it renders the frontier _visually_ in the tracker's own UI, so the human sees what's takeable without opening the map. Only a tracker that lacks native blocking falls back to a body convention. A ticket is **unblocked** when every ticket blocking it is closed; the **frontier** is the open, unblocked, unclaimed children — the edge of the known.
+
+The answer isn't part of the body — it's recorded on resolution (see [Work through the map](#work-through-the-map)). Assets created while resolving a ticket are linked from the issue, not pasted in.
+
+## Skill planning
+
+The \`wayfinder:<type>\` label is a closed set of four, and it names the **shape** of the work, not the skills that resolve it:
+
+- **grilling** — a decision conversation.
+- **research** — a fact outside the working directory that a decision waits on.
+- **prototype** — a cheap, rough artifact to react to when "how should it look" or "how should it behave" is the question.
+- **task** — manual work that must happen before a decision can be made. The one type that *does* rather than decides; it earns its place by unblocking a decision, never by delivering the destination. Its answer records what was done and any facts later tickets depend on.
+
+The type is **orthogonal** to the ticket's skills: any type can carry any skill from the list below. Plan a ticket's skills separately from its type, and record each as a ticket-carried pointer in the ticket body, so the session that claims it loads the skill.
+
+A **task** ticket carries no core skill. It does manual work rather than reaching a decision, so the decision-conversation, research, and prototype protocols have nothing to add to it. A registered ticket skill still applies to a task ticket whenever its when sentence says so.
+
+Readiness is **one rule**: a ticket that needs zero human input is AFK — label it \`ready-for-agent\`; a ticket that needs human oversight is HITL — label it \`ready-for-human\`. A HITL ticket resolves only through a live exchange, and the agent never stands in for the human's side of it (a grilling agent that answers its own questions has broken this).
+
+Plan each ticket's skills from this list:
+
+- \`wayfinder skill grill-with-docs\` — the default decision conversation; reach for it whenever a decision needs talking through.
+- \`wayfinder skill research\` — when a fact outside the working directory has to be found before a decision can be made.
+- \`wayfinder skill prototype\` — when the open question is how something should look or behave, and a rough artifact would sharpen it.
+
+### Ticket skills
+
+Assign a registered ticket skill to a ticket by writing a ticket-carried pointer that names the harness skill — for example "At session start, invoke the pre-mortem skill and apply it." Each carries the condition that makes it relevant.
+
+No ticket skills are registered. A developer adds one with \`wayfinder ticket-skill add <name> --when "<sentence>"\`.
+
+## Fog of war
+
+The map is _deliberately_ incomplete: don't chart what you can't yet see. Beyond the live tickets lies the **fog of war** — the dim view of decisions and investigations you can tell are coming but can't yet pin down, because they hang on questions still open. Resolving a ticket clears the fog ahead of it, graduating whatever's now specifiable into fresh tickets — one at a time, until the way to the destination is clear and no tickets remain.
+
+The map's **Not yet specified** section is where that dim view is written down: the suspected question, the area to revisit later. It's the undiscovered frontier _toward_ the destination — everything here is in scope, just not sharp enough to ticket. Write as loosely or as fully as the view allows; it doubles as a signpost for collaborators reading where the effort is headed.
+
+**Fog or ticket?** The test is whether you can state the question precisely now — _not_ whether you can answer it now.
+
+- **Ticket when** the question is already sharp — even if it's blocked and you can't act on it yet.
+- **Not yet specified when** you can't yet phrase it that sharply. Don't pre-slice the fog into ticket-sized pieces: it's coarser than a ticket, and one patch may graduate into several tickets, or none, once the frontier reaches it.
+
+**Not yet specified** excludes what's already decided (Decisions so far), what's already a live ticket, and what's out of scope (the next section).
+
+## Out of scope
+
+Fog only ever gathers _toward_ the destination. The destination fixes the scope, so work beyond it is **out of scope** — it isn't fog, and it doesn't belong in **Not yet specified**. It gets its own **Out of scope** section on the map: work you've consciously ruled out of _this_ effort. Scope, not sharpness, lands it here.
+
+Out-of-scope work never graduates — the frontier stops at the destination — so it returns only if the destination is redrawn, and then as a fresh effort, not a resumption.
+
+Ruling something out of scope is a scoping act, not a step on the route. When a ticket that already exists turns out to sit past the destination — mis-scoped in while charting, or exposed by a resolution — **close it** (a closed ticket is unambiguously off the frontier) and leave one line in the **Out of scope** section: the gist plus why it's out of scope, linking the closed ticket. It stays out of **Decisions so far**, which records the route actually walked — a scope boundary isn't a step on it.
+
+## Invocation
+
+Two modes. Either way, **never resolve more than one ticket per session**.
+
+### Chart the map
+
+User invokes with a loose idea.
+
+1. **Name the destination** through a decision conversation that pins down what this map is finding its way to — the spec, decision, or change. The destination fixes the scope, so it's settled first. Before you ask your first question you must run \`wayfinder skill grill-with-docs\` — every map names terms and settles design decisions, so the glossary and ADR discipline it carries belongs on this conversation, not only on the ones that feel like design. The protocol is the same either way:
+
+Interview me relentlessly about every aspect of this until we reach a shared understanding. Walk down each branch of the decision tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time, waiting for feedback on each question before continuing. Asking multiple questions at once is bewildering.
+
+If a *fact* can be found by exploring the environment (filesystem, tools, etc.), look it up rather than asking me. The *decisions*, though, are mine — put each one to me and wait for my answer.
+
+Do not act on it until I confirm we have reached a shared understanding.
+
+
+2. **Map the frontier.** Grill again, **breadth-first** this time: fan out across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. **If this surfaces no fog** — the way to the destination is already clear, the whole journey small enough for one session — you don't need a map. Stop and ask the user how they'd like to proceed.
+3. **Create the map** (label \`wayfinder:map\`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into **Not yet specified**.
+4. **Create the tickets you can specify now** as child issues of the map — then wire blocking edges in a **second pass** (issues need ids before they can reference each other). Wiring sorts them into the frontier and the blocked; everything you can't yet specify stays in the fog — the **Not yet specified** section.
+5. Stop — charting is one session's work; it hand-resolves nothing.
+
+### Work through the map
+
+User invokes with a map (URL or number). A ticket is **optional** — without one, you pick the next decision, not the user.
+
+1. Load the **map** — the low-res view, not every ticket body.
+2. Choose the ticket. If the user named one, use it. Otherwise take the first frontier ticket in order. **Claim it**: assign it to yourself before any work.
+3. Resolve it — **zoom as needed**: fetch the full body of any related or closed ticket on demand; invoke the skills the \`## Notes\` block names. You must run \`wayfinder skill grill-with-docs\` before resolving any ticket that reaches a decision — which is every type but \`task\` — so the resolution lands in the map's own vocabulary.
+4. Record the resolution: post the answer as a **resolution comment**, **close** the issue, and **append a context pointer** to the map's Decisions-so-far.
+5. Add newly-surfaced tickets (create-then-wire); graduate any fog the answer has made specifiable, clearing each graduated patch from **Not yet specified** so it lives only as its new ticket. If the answer reveals a ticket — this one or another — sits beyond the destination, **rule it out of scope** rather than resolving it on the route. If the decision invalidates other parts of the map, update or delete those tickets.
+
+The user may run unblocked tickets in parallel, so expect other sessions to be editing the tracker concurrently.
+
+## Issue tracker
+
+No issue tracker is configured for this repo, so there is no operations prose to load.
+
+Ask the human to choose one, and do not pick a tracker on your own:
+
+- Use the local markdown tracker — run \`wayfinder tracker set local\`.
+- Name this repo's tracker — run \`wayfinder tracker set "<value>"\`, for example \`wayfinder tracker set "github cli"\`.
+"
+`;

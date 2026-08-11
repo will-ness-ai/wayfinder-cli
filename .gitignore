@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.pnpm-store/
+
+# Sandcastle lane runtime. Anchored here as well as in .sandcastle/.gitignore,
+# because re-running `sandcastle init` regenerates the nested one.
+.sandcastle/.env
+.sandcastle/logs/
+.sandcastle/worktrees/
+.sandcastle/pnpm-store/
+.sandcastle/patches/
+.sandcastle/run.json
+.sandcastle/node_modules/
+.sandcastle/pnpm-lock.yaml

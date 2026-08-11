@@ -1,0 +1,8 @@
+.env
+logs/
+worktrees/
+pnpm-store/
+patches/
+run.json
+node_modules/
+pnpm-lock.yaml
