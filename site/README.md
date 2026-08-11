@@ -28,6 +28,11 @@ imported asset on its own, and it leaves a hand-written `<a href>` alone.
 `astro check` calls, so `pnpm check` fails on it
 ([tracking discussion](https://github.com/withastro/roadmap/discussions/1321)).
 
+The site needs no `.nojekyll` file. GitHub Pages serves the uploaded artifact
+as it is, and it runs Jekyll only on the branch-based source. Measured on the
+first deploy: `_astro/index.CMj5cWph.css` returns 200, and Jekyll would have
+hidden that underscore-prefixed path.
+
 ## Escaping the CLI output
 
 A rendered skill page holds the stdout of `wayfinder skill <id>`, and the
