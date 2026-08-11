@@ -1,22 +1,28 @@
 ---
 /**
- * The cheatsheet. One dense table, three columns, a rule and extra space to
- * open each group. Verdict 9.
+ * The cheatsheet, from src/copy/cheatsheet.md.
+ *
+ * One dense table, three columns, a rule and extra space to open each group.
+ * Cards were prototyped and rejected: the page exists to be scanned, and card
+ * borders spend space that rows want. Verdict 9.
  */
+import { getEntry, render } from 'astro:content';
 import Page from '../layouts/Page.astro';
-import { CHEATSHEET } from '../data/cheatsheet';
+import { plain } from '../lib/text';
+
+const entry = (await getEntry('copy', 'cheatsheet'))!;
+const { groups, terminal, title, description } = entry.data;
+const { Content } = await render(entry);
+
+if (!groups) throw new Error('src/copy/cheatsheet.md must carry groups.');
 ---
 
-<Page
-  current="cheatsheet"
-  description="Every wayfinder-cli command, flag, config key, config scope, tracker value, skill id, and ticket label, on one page."
->
+<Page current="cheatsheet" title={title} description={description} terminal={terminal}>
+  {/* The Markdown body is the standfirst — one paragraph, which `.pagehead p`
+      styles. */}
   <div class="pagehead">
-    <h1>Cheatsheet</h1>
-    <p>
-      Every command, every flag, every config key, and the six tracker values. One screen, for a
-      human eye.
-    </p>
+    <h1>{title}</h1>
+    <Content />
   </div>
 
   <div class="tablewrap">
@@ -26,12 +32,12 @@ import { CHEATSHEET } from '../data/cheatsheet';
       </thead>
       <tbody>
         {
-          CHEATSHEET.flatMap((group) =>
-            group.rows.map(([item, meaning], n) => (
+          groups.flatMap((group) =>
+            group.rows.map((row, n) => (
               <tr class:list={[{ first: n === 0 }]}>
                 <td class="g">{n === 0 ? group.title : ''}</td>
-                <td class="k">{item}</td>
-                <td class="d">{meaning}</td>
+                <td class="k">{plain(row.item)}</td>
+                <td class="d">{plain(row.meaning)}</td>
               </tr>
             )),
           )

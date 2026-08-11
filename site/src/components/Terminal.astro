@@ -5,22 +5,34 @@
  * the product is a program that prints things, so the site shows what it
  * prints, on every page. Verdict 1.
  *
- * The example is static: it does not follow the reader's scroll. Verdict 6.
- * The palette stays dark in both themes.
+ * The example is static: it does not follow the reader's scroll (verdict 6),
+ * and the palette stays dark in both themes.
+ *
+ * The lines come from a copy file's `terminal` key. Every `out` and `ok` line
+ * there was captured from the built CLI.
  */
-import type { TerminalExample } from '../data/terminals';
+import type { CollectionEntry } from 'astro:content';
 
-interface Props extends TerminalExample {}
+type Terminal = CollectionEntry<'copy'>['data']['terminal'];
 
-const { label, lines } = Astro.props;
+interface Props {
+  terminal: Terminal;
+}
+
+const { terminal } = Astro.props;
+
+/** `out` is plain terminal foreground, so it takes no class. */
+const CLASS = { cmd: 'cmd', ok: 'ok', cm: 'cm', out: '' } as const;
 ---
 
 <div class="term">
-  <div class="bar"><span class="dot"></span>{label}</div>
+  <div class="bar"><span class="dot"></span>{terminal.label}</div>
   {/* One span per line, each followed by its own newline. `.term .out` sets
       `white-space: pre-wrap`, so the newlines are the line breaks and an empty
       line is a bare newline. The expression escapes the text for us. */}
   <div class="out">{
-      lines.map(([kind, text]) => (text === '' ? '\n' : [<span class={kind}>{text}</span>, '\n']))
+      terminal.lines.map(({ kind, text }) =>
+        text === '' ? '\n' : [<span class={CLASS[kind]}>{text}</span>, '\n'],
+      )
     }</div>
 </div>

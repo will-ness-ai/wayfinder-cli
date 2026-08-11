@@ -1,45 +1,52 @@
 ---
 /**
- * The landing page. Verdict 8 in docs/prototypes/docs-site/README.md.
+ * The landing page, from src/copy/overview.md.
  *
- * The second panel takes the accent border and tint, so the eye sees that half
- * of the pitch is about extension, not complaint.
+ * One oversized statement, the install commands in a dark block, then the
+ * pitch split 50/50 into two bordered panels. The second panel takes the
+ * accent border and tint, so the eye sees that half of the pitch is about
+ * extension, not complaint. Verdict 8.
  */
+import { getEntry } from 'astro:content';
 import Page from '../layouts/Page.astro';
-import { HERO, INSTALL, HALVES, UPSTREAM } from '../data/landing';
+
+const { data } = (await getEntry('copy', 'overview'))!;
+const { hero, install, panels, upstream, terminal } = data;
+
+if (!hero || !install || !panels || !upstream) {
+  throw new Error('src/copy/overview.md must carry hero, install, panels, and upstream.');
+}
 ---
 
-<Page
-  current="overview"
-  title="wayfinder-cli"
-  description="A content-server CLI that renders planning skills as markdown for coding agents to read. Composed for your harness, substituted for your issue tracker, extended with the skills your team registered."
->
+<Page current="overview" title={data.title} description={data.description} terminal={terminal}>
   <div class="hero">
-    <h1>{HERO.headline}</h1>
-    <p class="sub">{HERO.sub}</p>
+    <h1>{hero.headline}</h1>
+    <p class="sub">{hero.sub}</p>
 
+    {/* The locked block prints the commands and nothing else. Each `note` in
+        the copy has no home in this design; what the landing page claims about
+        installing is wayfinder ticket #62. */}
     <div class="installblock">{
-        INSTALL.map((command, n) => (
-          <>
-            <span class="p">$</span>{' '}
-            <span class="c">{command}</span>
-            {n < INSTALL.length - 1 ? '\n' : ''}
-          </>
-        ))
+        install.map(({ command }, n) => [
+          <span class="p">$</span>,
+          ' ',
+          <span class="c">{command}</span>,
+          n < install.length - 1 ? '\n' : '',
+        ])
       }</div>
 
     <div class="split2">
       {
-        HALVES.map((half) => (
-          <div class:list={['panel', { add: half.index === '02' }]}>
+        panels.map((panel, n) => (
+          <div class:list={['panel', { add: panel.accent }]}>
             <div class="hh">
-              <span class="ix">{half.index}</span>
-              <b>{half.title}</b>
-              <span class="nt">{half.note}</span>
+              <span class="ix">{String(n + 1).padStart(2, '0')}</span>
+              <b>{panel.title}</b>
+              <span class="nt">{panel.note}</span>
             </div>
-            {half.rows.map((row) => (
+            {panel.rows.map((row) => (
               <div class="it">
-                <h4>{row.heading}</h4>
+                <h4>{row.title}</h4>
                 <p>{row.body}</p>
               </div>
             ))}
@@ -49,9 +56,7 @@ import { HERO, INSTALL, HALVES, UPSTREAM } from '../data/landing';
     </div>
 
     <p class="outlink">
-      New to wayfinding? This site documents the CLI, not the method — start at <a
-        href={UPSTREAM}>aihero.dev/skills-wayfinder</a
-      >.
+      {upstream.text} <a href={upstream.url}>{upstream.label}</a>.
     </p>
   </div>
 </Page>

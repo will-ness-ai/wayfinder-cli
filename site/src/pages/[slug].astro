@@ -1,0 +1,38 @@
+---
+/**
+ * The four reference pages, from src/copy/.
+ *
+ * Prose in the middle column, a terminal in the third. A reference page
+ * carries no in-page contents list: the four are short enough to scroll, and a
+ * contents list would take the column the terminal earns. Verdict 7.
+ *
+ * The landing page and the cheatsheet have their own files, because each has a
+ * structure this prose layout does not hold.
+ */
+import type { GetStaticPaths } from 'astro';
+import { getCollection, render } from 'astro:content';
+import Page from '../layouts/Page.astro';
+
+export const getStaticPaths = (async () => {
+  const entries = await getCollection('copy');
+
+  return entries
+    .filter((entry) => entry.id !== 'overview' && entry.id !== 'cheatsheet')
+    .map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}) satisfies GetStaticPaths;
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<Page
+  current={entry.id}
+  title={entry.data.title}
+  description={entry.data.description}
+  terminal={entry.data.terminal}
+>
+  <div class="md">
+    <h1>{entry.data.title}</h1>
+    <Content />
+  </div>
+</Page>
