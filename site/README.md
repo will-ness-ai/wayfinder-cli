@@ -3,6 +3,11 @@
 The docs site for wayfinder-cli. Astro, no theme. It deploys to GitHub Pages on
 every push to `main`, through [`.github/workflows/pages.yml`](../.github/workflows/pages.yml).
 
+Every pull request runs `pnpm check` and `pnpm build`, through
+[`.github/workflows/site-check.yml`](../.github/workflows/site-check.yml). Run
+both from inside `site/` before you push: a type error stops the pull request,
+even though it does not stop a deploy.
+
 The look is locked in [docs/prototypes/docs-site/README.md](../docs/prototypes/docs-site/README.md).
 That file decides the design; a framework default never overrules a verdict in
 it. The framework choice and its measurements are in
