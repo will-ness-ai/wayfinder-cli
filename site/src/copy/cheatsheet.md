@@ -154,8 +154,14 @@ groups:
         meaning: ships operations prose
       - item: local
         meaning: ships operations prose — markdown files in the repo
-      - item: github mcp · gitlab cli · jira mcp · linear mcp
-        meaning: planned; no prose ships yet, so each behaves as a custom value
+      - item: github mcp
+        meaning: planned; no prose ships yet, so it behaves as a custom value
+      - item: gitlab cli
+        meaning: planned; no prose ships yet
+      - item: jira mcp
+        meaning: planned; no prose ships yet
+      - item: linear mcp
+        meaning: planned; no prose ships yet
       - item: anything else
         meaning: custom — the render names it and leaves the operations to your agent
       - item: --doc &lt;path&gt;

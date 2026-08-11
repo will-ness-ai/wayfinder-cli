@@ -56,6 +56,25 @@ Two files carry more. `overview.md` adds `hero`, `install`, `panels`, and
 `upstream` — the locked landing structure. `cheatsheet.md` adds `groups`, the
 eight groups of the one dense table. Both shapes are visible in the file.
 
+## An item cell on the cheatsheet holds one token
+
+`cheatsheet.md` renders its `groups` into a three-column table — group, item,
+meaning. The item column is monospace and never wraps, so the widest cell in it
+sets the width of the whole column. Every character that cell gains comes out of
+the meaning column beside it.
+
+Two rules follow:
+
+- **One literal token per cell.** A command, a flag, a config key, a path, or a
+  label — never a list. Give each value its own row.
+- **Keep an item to 36 characters or fewer.** `wayfinder ticket-skill remove
+  <name>` is the widest today, and the columns are measured against it.
+
+A cell that held four tracker values joined by `·` widened the item column by
+84px and cut the meaning column to 148px, which wrapped 41 of 51 meaning cells to
+three lines. The page's verdict is maximum density, one screen for a human eye.
+See [Decide how the cheatsheet handles a long item](https://github.com/will-ness-ai/wayfinder-cli/issues/65).
+
 ## Internal links
 
 A link in a body to another page of this site is written site-root-relative, with
