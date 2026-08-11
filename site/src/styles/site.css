@@ -490,9 +490,12 @@ body {
   font-size: 17px;
   max-width: 50ch;
 }
-/* The three commands run together on one wrapped line, because the block sets
-   no `white-space`. That is how the locked prototype renders; it is reproduced
-   here rather than corrected, and it is raised on the pull request. */
+/* One step per row: the command, then its note. Wayfinder ticket #62 added the
+   note, because the locked block printed commands only and left the copy's
+   three notes unread. The row also ends an accident: the prototype set no
+   `white-space`, so its three commands collapsed onto one wrapped line that
+   broke mid-command on a narrow viewport. A note cannot attach to a command
+   that shares a line with two others, so the collapse is gone. */
 .installblock {
   background: var(--term);
   color: var(--termfg);
@@ -501,11 +504,23 @@ body {
   font: 13px/2 var(--mono);
   margin-bottom: 34px;
 }
+.installblock .step + .step {
+  margin-top: 13px;
+}
 .installblock .p {
   color: #4c555c;
 }
 .installblock .c {
   color: var(--caret);
+}
+/* The note is prose beside a command, not output, so it takes the body font.
+   Its colour is `--termdim`, the tone the terminal column already gives a
+   comment — the design's own muted-on-dark value, not a new one. */
+.installblock .note {
+  font: 13px/1.55 var(--body);
+  color: var(--termdim);
+  margin: 1px 0 0;
+  max-width: 64ch;
 }
 
 .split2 {
