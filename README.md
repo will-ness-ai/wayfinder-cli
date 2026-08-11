@@ -1,24 +1,63 @@
 # wayfinder-cli
 
-A CLI that serves the wayfinder planning skills to coding agents as rendered, configurable content — with ticket-skill registration and tracker-specific prose.
+**Your agent's planning skills, served.** Composed for your harness,
+substituted for your issue tracker, and extended with the skills your team
+registers.
 
-Status: planning. The effort is charted as a wayfinder map on this repo's issues. The locked v1 spec is [docs/spec/wayfinder-cli-v1.md](docs/spec/wayfinder-cli-v1.md).
+`wayfinder` is a content server: it prints planning skills as rendered markdown
+for a coding agent to read.
 
-Skill content is forked and adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT).
+```sh
+npm install -g wayfinder-cli
+```
+
+## Documentation
+
+**[will-ness-ai.github.io/wayfinder-cli](https://will-ness-ai.github.io/wayfinder-cli/)**
+
+The site holds the quickstart, every command and flag, the config scopes, the
+tracker values, ticket-skill registration, a cheatsheet, and the rendered text
+of every skill the CLI serves.
+
+A Homebrew tap ships the same build:
+
+```sh
+brew install will-ness-ai/tap/wayfinder-cli
+```
+
+New to wayfinding? This CLI serves the method. It does not teach it. Start at
+[aihero.dev/skills-wayfinder](https://www.aihero.dev/skills-wayfinder).
+
+Skill content is forked and adapted from
+[mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See
+[content/ATTRIBUTION.md](content/ATTRIBUTION.md).
 
 ## Releasing
 
-Releases are tag-driven and on-demand: push a version tag, and CI does the rest. Decided in [Distribution mechanics (#14)](https://github.com/will-ness-ai/wayfinder-cli/issues/14).
+For maintainers. Releases are tag-driven and on demand: push a version tag, and
+CI does the rest. Decided in
+[Distribution mechanics (#14)](https://github.com/will-ness-ai/wayfinder-cli/issues/14).
 
 To cut a release:
 
-1. On `main`, run `npm version <major|minor|patch>`. This bumps `package.json` and creates the `v*` tag.
+1. On `main`, run `npm version <major|minor|patch>`. This bumps `package.json`
+   and creates the `v*` tag.
 2. Push the commit and the tag: `git push --follow-tags`.
-3. CI takes over on the `v*` tag: it builds, publishes `wayfinder-cli` to npm via trusted publishing with provenance (no stored npm token), creates the GitHub Release with generated notes, then bumps the Homebrew tap formula to the new tarball URL and checksum.
+3. CI takes over on the `v*` tag. It builds, publishes `wayfinder-cli` to npm
+   through trusted publishing with provenance (no stored npm token), creates
+   the GitHub Release with generated notes, then bumps the Homebrew tap formula
+   to the new tarball URL and checksum.
 
-CI is the only publisher. The one manual publish is the bootstrap that first creates the package on npm; after that, trusted publishing is enabled on the package and every release goes through the tag flow above.
+CI is the only publisher. The bootstrap publish that first created the package
+on npm has run, and trusted publishing is enabled, so every release from here
+goes through the tag flow above.
 
-Distribution channels:
+The tap formula wraps the published npm tarball (`depends_on "node"` plus
+`std_npm_args`), so it always installs exactly what CI published. The release
+workflow updates the tap with a fine-grained token scoped to the tap repo only.
+The tap is a second channel, not a gate on the first: with
+`HOMEBREW_TAP_TOKEN` absent, the bump reports the gap in the job summary and
+the npm release still succeeds.
 
-- **npm**: package `wayfinder-cli`, installs the `wayfinder` binary.
-- **Homebrew**: personal tap — `brew install will-ness-ai/tap/wayfinder-cli`. The formula wraps the published npm tarball (`depends_on "node"` + `std_npm_args`), so it always installs exactly what CI published. The release workflow updates the tap with a fine-grained token scoped to the tap repo only.
+The docs site deploys on every push to `main`, through a separate workflow.
+[site/README.md](site/README.md) holds its conventions.
