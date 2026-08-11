@@ -285,6 +285,30 @@ body {
   content: 'dark';
 }
 
+/* The source link — the site's one door to the repository, on wayfinder ticket
+   #63. It has no value in the locked prototype, which shows a strip with the
+   theme control alone, so it borrows the theme control's own colours: the two
+   sit together and must read as one pair of controls. The strip was chosen
+   over the route sidebar because the sidebar stops being a column below 860px
+   and scrolls away, and the skill pages run long. */
+.strip .source {
+  display: flex;
+  align-items: center;
+  color: var(--dim);
+  /* No border and no background — this rounds the focus ring alone, to the
+     same 5px as the theme control beside it. */
+  border-radius: 5px;
+}
+.strip .source:hover {
+  color: var(--fg);
+}
+/* `currentColor` is what carries the hover, and `display: block` drops the
+   inline-box descender that would push the 46px strip taller. */
+.strip .source svg {
+  display: block;
+  fill: currentColor;
+}
+
 /* ---------- prose ---------- */
 
 .md {

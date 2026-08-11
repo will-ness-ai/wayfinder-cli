@@ -13,6 +13,12 @@ That file decides the design; a framework default never overrules a verdict in
 it. The framework choice and its measurements are in
 [docs/research/site-framework.md](../docs/research/site-framework.md).
 
+**One control is on the site and not in the prototype**: the source link in the
+top strip. It was added after the design was locked, and the prototype is
+deliberately not amended, so the record is
+[wayfinder ticket #63](https://github.com/will-ness-ai/wayfinder-cli/issues/63).
+It is not drift — do not reconcile it away.
+
 ## A standalone project
 
 `site/` holds its own `package.json` and its own `pnpm-lock.yaml`, and the repo
