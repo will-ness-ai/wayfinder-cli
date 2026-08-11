@@ -46,7 +46,20 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: site/pnpm-lock.yaml
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            site/pnpm-lock.yaml
+
+      # The site renders every skill page by importing the CLI's `run` seam, so
+      # `dist/` has to exist before Astro starts. These two steps run in the
+      # repo root, against the root lockfile — `release.yml` is untouched.
+      - name: Install the CLI
+        run: pnpm install --frozen-lockfile
+        working-directory: .
+
+      - name: Build the CLI
+        run: pnpm build
+        working-directory: .
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

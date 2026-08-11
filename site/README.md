@@ -90,3 +90,46 @@ and it needs no `esc()` helper.
 
 `set:html` writes the string raw. Build the line-number gutter and the markdown
 tinting as Astro elements, so the escaping stays.
+
+## The skill pages
+
+Nineteen pages are built, and fifteen of them are stations on the route. The
+nine top-level skill ids are stations; the four supporting files they disclose
+— `domain-modeling/adr-format`, `domain-modeling/context-format`,
+`prototype/logic`, `prototype/ui` — are pages with no dot, reached from the
+parent that discloses them. Decided on
+[wayfinder ticket #50](https://github.com/will-ness-ai/wayfinder-cli/issues/50).
+
+**The page set follows the CLI, not a list here.** `src/lib/renders.ts` reads
+`wayfinder skills` for the ids. `src/lib/nav.ts` still writes the nine station
+labels out, because their order is the prototype's rather than the CLI's
+registry order — so it checks itself against the CLI on every build and throws
+when the two disagree.
+
+**The CLI is loaded at run time, through a specifier the bundler cannot read.**
+`site/` links the CLI with `link:..`, and Vite treats a linked package as
+source: a static import is inlined into the build chunk, and the CLI then looks
+for its own `content/` tree under `dist/.prerender/`. `ssr.external` does not
+lift a linked package out. See the comment on `CLI_SEAM` in
+[src/lib/renders.ts](src/lib/renders.ts).
+
+**`dist/` must exist before Astro starts.** Run `pnpm install && pnpm build` in
+the repo root first. Both workflows do this — [pages.yml](../.github/workflows/pages.yml)
+and [site-check.yml](../.github/workflows/site-check.yml) — and their two extra
+steps must stay equal.
+
+**One fixture produces every page.** [fixture/](fixture/) is a real directory
+with a real project-scope config: tracker value `github cli`, and the ticket
+skills `grill-design` and `pre-mortem`. The render reads the config, so without
+it the tracker block would print its notice-and-ask state and the Ticket skills
+block would be empty. Every page states the fixture in prose, so a reader does
+not take the GitHub tracker prose for universal. Reproduce any page with:
+
+```sh
+cd site/fixture && node ../../dist/bin.js skill wayfinder
+```
+
+**No byte changes.** The tinting in [src/lib/tint.ts](src/lib/tint.ts) only
+decides which span a character sits in, and it asserts that at build time. The
+copy control reads the text back out of the rows, so what it puts on the
+clipboard is what the CLI printed — trailing newline included.

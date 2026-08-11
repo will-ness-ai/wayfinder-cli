@@ -1,4 +1,16 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
+
+/**
+ * The fixture directory the skill pages are rendered against, as an absolute
+ * path handed to the build.
+ *
+ * It is resolved here, not in `src/lib/renders.ts`, because Vite bundles the
+ * site's own modules into `dist/.prerender/` and `import.meta.url` inside a
+ * bundled module points at the chunk, not at the source file. This config is
+ * loaded from its real location, so the URL below is the real one.
+ */
+const FIXTURE_DIR = fileURLToPath(new URL('./fixture', import.meta.url));
 
 /**
  * The deploy base path. `base` below and `rehypeBaseHref` both read it, so the
@@ -92,5 +104,11 @@ export default defineConfig({
     // The site pays that dependency for the two plugins above, both of which
     // apply the locked design to prose the build renders from src/copy/.
     rehypePlugins: [rehypeWrapTables, rehypeBaseHref],
+  },
+
+  vite: {
+    define: {
+      __FIXTURE_DIR__: JSON.stringify(FIXTURE_DIR),
+    },
   },
 });

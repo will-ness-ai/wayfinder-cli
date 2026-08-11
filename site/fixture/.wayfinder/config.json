@@ -1,0 +1,13 @@
+{
+  "tracker": {
+    "value": "github cli"
+  },
+  "ticketSkills": {
+    "grill-design": {
+      "when": "the ticket decides how a screen looks or behaves"
+    },
+    "pre-mortem": {
+      "when": "the ticket carries a decision that is expensive to reverse"
+    }
+  }
+}
