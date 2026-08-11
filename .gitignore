@@ -2,6 +2,14 @@ node_modules/
 dist/
 .pnpm-store/
 
+# Claude Code local state. Only the per-machine parts are ignored: worktrees
+# live on one developer's disk, and local settings are personal overrides.
+# Everything else under `.claude/` stays visible on purpose — a repo that runs
+# `wayfinder init` commits the stub it writes to `.claude/skills/`, and a
+# blanket ignore would hide it.
+.claude/worktrees/
+.claude/settings.local.json
+
 # Sandcastle lane runtime. Anchored here as well as in .sandcastle/.gitignore,
 # because re-running `sandcastle init` regenerates the nested one.
 .sandcastle/.env
