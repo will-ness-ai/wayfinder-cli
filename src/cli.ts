@@ -51,13 +51,15 @@ function skillsCommand(asJson: boolean): CliResult {
   return ok(`${rendered}\n`);
 }
 
+type Flag = 'help' | 'version' | 'json';
+
 interface ParsedArgv {
-  flags: Set<'help' | 'version' | 'json'>;
+  flags: Set<Flag>;
   positionals: string[];
 }
 
 function parseArgv(argv: string[]): ParsedArgv {
-  const flags = new Set<'help' | 'version' | 'json'>();
+  const flags = new Set<Flag>();
   const positionals: string[] = [];
   for (const arg of argv) {
     switch (arg) {
