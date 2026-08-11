@@ -1,0 +1,1125 @@
+<title>wayfinder docs site — design prototypes</title>
+
+<!--
+  PROTOTYPE — throwaway. Ticket: "Design the docs site look" (#46) on map #45.
+  FINAL. Every verdict is applied and every page is locked. This file is the
+  specification the later tickets build against; see README.md beside it for
+  each verdict and its reasoning.
+  Picker: bottom-right, draggable. Use it to switch page and theme.
+  Nothing here is production code. Content is real copy from docs/spec/wayfinder-cli-v1.md.
+-->
+
+<script type="text/markdown" id="md-reference">
+# Commands
+
+`wayfinder` has two surfaces. The **agent surface** is two read-only commands. Everything else is **setup**: a human runs it once per repo, or an agent drives it with flags.
+
+## The agent surface
+
+### wayfinder skill &lt;id&gt;
+
+Prints one rendered skill as markdown, on stdout. The output is the entire adapted skill. The CLI never summarizes content.
+
+```bash
+wayfinder skill wayfinder
+wayfinder skill prototype/ui
+```
+
+A skill id is logical. It carries no `.md` and no directory name. A skill that holds sub-files exposes them as sub-tree ids, and its render ends with a **children block**: one row per child, each row a command plus the condition that fires it. A single-file skill has no children block.
+
+The render is composed, not concatenated. A dependency that every path needs is inlined. A dependency that only some paths need becomes a CLI pointer. Frontmatter is stripped and headings are demoted, and no framing prose is added.
+
+### wayfinder skills
+
+Lists every served id with its description and its children.
+
+```bash
+wayfinder skills
+wayfinder skills --json
+```
+
+| Id | Children | Origin |
+|---|---|---|
+| `wayfinder` | none | core |
+| `grilling` | none | core |
+| `grill-with-docs` | `domain-modeling/adr-format`, `domain-modeling/context-format` | core |
+| `domain-modeling` | `domain-modeling/adr-format`, `domain-modeling/context-format` | core |
+| `research` | none | core |
+| `prototype` | `prototype/logic`, `prototype/ui` | core |
+| `to-spec` | none | core |
+| `to-tickets` | none | core |
+| `tracker` | none | tracker |
+
+`tracker` is not a forked skill. It prints the tracker block alone, so an agent working `to-spec` or `to-tickets` outside a wayfinder session can still fetch operations prose.
+
+### Bare wayfinder
+
+Prints the agent quickstart: the two read commands and the start line, and nothing else. `wayfinder --help` prints the full setup page instead. Two audiences, two pages.
+
+## Setup commands
+
+Every setup command runs an interactive form when a TTY is present and no flags are given. Every one of them accepts flags, so an agent or a script never needs the form.
+
+### wayfinder init
+
+```bash
+wayfinder init --harness claude,agents --tracker "github cli"
+```
+
+Writes exactly one stub skill per selected harness. Install targets are ids: `claude` writes to `.claude/skills/`, `agents` writes to `.agents/skills/`. Run it with no flags in a terminal and it offers a multi-select with detected targets marked.
+
+The stub is agent-optimized. It holds a hardened start line — *"Your next action MUST be to run `wayfinder skill wayfinder`"* — plus a generated command map of the served skills. It holds no tracker or registration talk, because that is config-audience material.
+
+`init` is idempotent and it reports a diff. It is the first run and it is the repair path. There is one stub per harness, never one per served skill, so a skill you keep installed yourself is never overwritten.
+
+### wayfinder tracker
+
+```bash
+wayfinder tracker show
+wayfinder tracker set "github cli"
+wayfinder tracker set "acme tracker" --doc ./docs/trackers/acme.md
+wayfinder tracker set "linear mcp" --user
+```
+
+The tracker value is freeform prose. Six values ship with operations docs: `github cli`, `github mcp`, `gitlab cli`, `jira mcp`, `linear mcp`, `local`. Any other value is a custom value, and the render names it and leaves operations to the agent's own tools.
+
+`--doc` attaches your own operations prose to any value, known or not. It stores the **path**, not a copy, so the whole team reads the same file from the repo. An attached doc replaces a shipped doc; the two never merge.
+
+### wayfinder ticket-skill
+
+```bash
+wayfinder ticket-skill add pre-mortem --when "a decision is risky and hard to reverse"
+wayfinder ticket-skill list
+wayfinder ticket-skill edit pre-mortem --when "..."
+wayfinder ticket-skill remove pre-mortem --scope project
+```
+
+A ticket skill is a harness skill that charting assigns to each ticket where it is relevant. The schema is three fields and no more: **name**, a required **when sentence**, and a **scope**. There is no source field, because the CLI points at the skill and never serves it.
+
+Each registration renders inside the wayfinder skill, under **Ticket skills**, as its name plus its when sentence. The charting agent reads that block and writes a ticket-carried pointer into each ticket the sentence covers.
+
+### wayfinder doctor
+
+```bash
+wayfinder doctor
+```
+
+Checks that each registered ticket-skill name resolves to an installed harness skill, across user scope and project scope, for both the `claude` and the `agents` targets. It also reports a tracker doc path that does not resolve. A missing file is never an error at render time — it degrades to the no-doc block — so `doctor` is how you find it.
+
+## Global options
+
+| Option | Effect |
+|---|---|
+| `--json` | JSON instead of the default TOON, on list and status commands |
+| `--version`, `-V` | Print the version |
+| `--help`, `-h` | Full setup page |
+
+List and status commands print TOON by default. Skill renders are always markdown.
+
+## Usage errors
+
+A missing flag with no TTY exits non-zero with an error that **teaches**: what the flag means, what a good value looks like, and one example.
+
+```
+error: ticket-skill add needs --when
+
+  --when is the relevance condition for this skill. Charting reads it to
+  decide which tickets carry the skill, so write it as a condition, not a
+  description.
+
+  example:
+    wayfinder ticket-skill add pre-mortem \
+      --when "a decision is risky and hard to reverse"
+```
+</script>
+
+<script type="text/markdown" id="md-skill">
+# wayfinder
+
+A loose idea has arrived — too big for one agent session, and wrapped in fog: the way from here to the **destination** is not visible yet. Wayfinding is about finding that way, not charging at the destination. This skill charts the way as a **shared map** on the repo's issue tracker, then works its **decision tickets** — questions whose resolution is a decision, not slices of a build to execute — one at a time until the route is clear.
+
+The destination varies per effort, and naming it is the first act of charting — it shapes every ticket. It might be a spec to hand off and iterate on, a decision to lock before planning starts, or a change made in place like a data-structure migration. The map is domain-agnostic.
+
+## Plan, do not do
+
+Wayfinder is **planning** by default: each ticket resolves a decision, and the map is done when the way is clear — nothing left to decide before someone goes and does the thing. The pull to just do the work is usually the signal you have reached the edge of the map and it is time to hand off. An effort can override this in its **Notes**; absent that, produce decisions, not deliverables.
+
+## Refer by name
+
+Every map and ticket is an issue, so it has a **name** — its title. In everything the human reads, refer to it by that name, never by a bare id, number, or slug. A wall of `#42, #43, #44` is illegible; names read at a glance. The id and URL do not vanish — a name wraps its link — but they ride inside the name, never stand in for it.
+
+## The Map
+
+The map is a single issue on this repo's issue tracker, labelled `wayfinder:map` — the canonical artifact. Its tickets are child issues of the map.
+
+The map is an **index**, not a store. It lists the decisions made and points at the tickets that hold their detail; a decision lives in exactly one place — its ticket — so the map never restates it, only gists it and links.
+
+Where the map, its child tickets, blocking, and frontier queries physically live is tracker-specific. Consult the tracker block at the bottom of this render for how **this** repo expresses them.
+
+### The map body
+
+The whole map at low resolution, loaded once per session. Open tickets are **not** listed — they are open child issues, found by query.
+
+```markdown
+## Destination
+
+<what reaching the end of this map looks like>
+
+## Notes
+
+<domain; skills every session should consult; standing preferences>
+
+## Decisions so far
+
+- [<closed ticket title>](link) — <one-line gist of the answer>
+
+## Not yet specified
+
+## Out of scope
+```
+
+### Tickets
+
+Each ticket is a **child issue** of the map; the tracker's issue id is its identity. Its body is the question, sized to one 100K token agent session.
+
+```markdown
+## Question
+
+<the decision or investigation this ticket resolves>
+```
+
+Each ticket carries a `wayfinder:<type>` label — one of `research`, `prototype`, `grilling`, `task` — and a readiness label. A ticket an agent can complete with zero human input is `ready-for-agent`. A ticket that needs human oversight is `ready-for-human`.
+
+A session **claims** a ticket by assigning it to the dev driving the map, **first**, before any work, so concurrent sessions skip it. That assignee is the claim: an open, unassigned ticket is unclaimed.
+
+Blocking uses the tracker's **native** dependency relationship — essential because it renders the frontier visually in the tracker's own UI, so the human sees what is takeable without opening the map. A ticket is **unblocked** when every ticket blocking it is closed; the **frontier** is the open, unblocked, unclaimed children.
+
+## Skill planning
+
+The ticket type is the shape of the work. The **skill list** is what the claiming session loads, and it is orthogonal to the type: any type can carry any skills.
+
+| Skill | Fires when |
+|---|---|
+| `wayfinder skill grill-with-docs` | the ticket resolves through conversation — the default for a decision |
+| `wayfinder skill research` | the answer lives outside the working directory |
+| `wayfinder skill prototype` | a cheap concrete artifact would raise the fidelity of the discussion |
+
+A task ticket carries no core skill. Registered ticket skills append after the rows above.
+
+Write the chosen commands into the ticket body as a **ticket-carried pointer**, so the session that claims the ticket loads its own context:
+
+> Use bash to run `wayfinder skill prototype` before starting any work on this ticket.
+
+### Ticket skills
+
+The skills this project has registered. Assign each one to every ticket where its sentence applies, by writing a pointer that names the harness skill.
+
+| Skill | Fires when |
+|---|---|
+| `grilling-frontend-prototyping` | the ticket asks what a screen should look like |
+| `pre-mortem` | a decision is risky and hard to reverse |
+
+## Fog of war
+
+The map is deliberately incomplete: do not chart what you cannot yet see. Beyond the live tickets lies the **fog of war** — the dim view of decisions you can tell are coming but cannot yet pin down. Resolving a ticket clears the fog ahead of it, graduating whatever is now specifiable into fresh tickets.
+
+**Fog or ticket?** The test is whether you can state the question precisely now — *not* whether you can answer it now.
+
+- **Ticket when** the question is already sharp, even if it is blocked.
+- **Not yet specified when** you cannot yet phrase it that sharply.
+
+## Out of scope
+
+Fog only ever gathers toward the destination. The destination fixes the scope, so work beyond it is **out of scope** — it is not fog. It gets its own section on the map. Out-of-scope work never graduates.
+
+## Invocation
+
+Two modes. Either way, never resolve more than one ticket per session.
+
+### Chart the map
+
+1. **Name the destination.** Run a decision conversation to pin down what this map is finding its way to.
+2. **Map the frontier.** Grill again, breadth-first, surfacing the open decisions and the first steps takeable now.
+3. **Create the map**, labelled `wayfinder:map`.
+4. **Create the tickets you can specify now** as child issues, then wire blocking edges in a second pass.
+5. Stop — charting is one session's work; it hand-resolves nothing.
+
+### Work through the map
+
+1. Load the **map** — the low-res view, not every ticket body.
+2. Choose the ticket. **Claim it** before any work.
+3. Resolve it — zoom as needed; invoke the skills the ticket body names.
+4. Record the resolution: post the answer as a comment, close the issue, and append a context pointer to the map's Decisions-so-far.
+5. Add newly-surfaced tickets; graduate any fog the answer has made specifiable.
+
+## Grilling
+
+*Inlined, because chart mode needs the protocol before any ticket exists.*
+
+Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.
+
+Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled. Ask the whole frontier in one round: number each question and give your recommended answer. Then wait for the user's answers before the next round.
+
+Finding *facts* is your job, never the user's. When a frontier question needs a fact from the environment, go and find it. The *decisions* are the user's.
+
+The session is done when the frontier is empty: every branch visited, nothing left silently assumed.
+
+## Issue tracker: github cli
+
+Issues live in this repo's GitHub Issues. Use the `gh` CLI for every operation. Run it inside a clone and it infers the repo from `git remote -v`.
+
+### Conventions
+
+- **Create**: `gh issue create --title "..." --body-file <path>`
+- **Read**: `gh issue view <n> --comments`
+- **List**: `gh issue list --state open --json number,title,labels,assignees`
+- **Comment**: `gh issue comment <n> --body-file <path>`
+- **Close**: `gh issue close <n> --comment "..."`
+
+### Labels
+
+`gh` refuses a label that this repo does not have. When a skill tells you to apply a label that is missing, ask the human to choose: create it with `gh label create <name>`, or publish without it.
+
+### Wayfinding operations
+
+The **map** is one issue. Each **ticket** is a sub-issue of the map.
+
+- **Map**: `gh issue create --label wayfinder:map --title "..." --body-file <path>`
+- **Child ticket**: `gh issue create --parent <map> --label wayfinder:<type> --title "..." --body-file <path>`
+- **Blocking**: `gh issue edit <ticket> --add-blocked-by <blocker>`
+- **Claim**: `gh issue edit <n> --add-assignee @me` — the session's first write.
+
+**Frontier**: two steps, because no search qualifier scopes a query to one map's children.
+
+1. List the children: `gh issue view <map> --json subIssues`.
+2. For each child with `state: OPEN`, run `gh issue view <n> --json blockedBy,assignees`. The ticket is on the frontier when `assignees` is empty and every `blockedBy` node has `state: CLOSED`.
+
+## Children
+
+This skill has no sub-files.
+</script>
+
+<style>
+/* =====================================================================
+   ROUND 3 — the shell is locked. Zoom to the components inside it.
+     locked in round 1   rail base · chart route sidebar · system theme
+                         with a toggle · skill pages are raw stdout
+     locked in round 2   adaptive shell (three columns, but a skill page
+                         drops to two) · stdout stays dark in both themes
+                         · all 15 stations stay open in the route
+   Now every page offers five treatments of its own components.
+   ===================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+img, svg { max-width: 100%; }
+button { font: inherit; color: inherit; }
+a { color: inherit; }
+table { border-collapse: collapse; }
+summary::-webkit-details-marker { display: none; }
+
+:root {
+  --body: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --bg:#F6F7F5; --paper:#FFFFFF; --fg:#17191B; --dim:#6E7377; --faint:#9AA09C;
+  --rule:#E2E4E0; --hair:#EDEEEA; --accent:#1F7A6B; --soft:rgba(31,122,107,.11);
+  --code:#F0F2EE;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#121412; --paper:#191C19; --fg:#E4E7E2; --dim:#8C938E; --faint:#666C68;
+    --rule:#272B27; --hair:#1F231F; --accent:#5FC4B0; --soft:rgba(95,196,176,.13);
+    --code:#101310;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#121412; --paper:#191C19; --fg:#E4E7E2; --dim:#8C938E; --faint:#666C68;
+  --rule:#272B27; --hair:#1F231F; --accent:#5FC4B0; --soft:rgba(95,196,176,.13);
+  --code:#101310;
+}
+/* the terminal keeps ONE palette in both themes — round-2 verdict Q2 */
+:root {
+  --term:#0F1211; --termfg:#D8DAD6; --termdim:#727A81; --termrule:#222724; --caret:#E4B429;
+  --tHead:#E4B429; --tCode:#7FD2C2; --tDim:#767E7A;
+}
+
+html { background: var(--bg); }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); line-height: 1.6; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+
+/* ---------- locked chrome ---------- */
+.page { display: grid; grid-template-columns: 254px minmax(0,1fr); min-height: 100vh; }
+.page.three { grid-template-columns: 254px minmax(0,1fr) minmax(300px,34%); }
+.col { display: flex; flex-direction: column; min-width: 0; }
+.pad { padding: 32px 30px 110px; }
+
+.side { padding: 26px 20px 60px 26px; position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid var(--rule); background: var(--bg); }
+.side .brand { font-size: 21px; font-weight: 700; letter-spacing: -.03em; margin-bottom: 2px; }
+.side .ver { font: 10.5px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--faint); margin-bottom: 28px; }
+.route { position: relative; padding-left: 19px; }
+.route::before { content: ""; position: absolute; left: 4px; top: 8px; bottom: 8px; width: 1px; background: var(--rule); }
+.route .grp { font-size: 10px; letter-spacing: .19em; text-transform: uppercase; color: var(--faint); margin: 22px 0 7px; }
+.route a { display: block; text-decoration: none; font-size: 13.5px; padding: 3px 0; position: relative; color: var(--dim); }
+.route a::before { content: ""; position: absolute; left: -19px; top: 10px; width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--rule); background: var(--bg); }
+.route a:hover { color: var(--fg); }
+.route a.on { color: var(--accent); font-weight: 600; }
+.route a.on::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--soft); }
+
+.strip { display: flex; align-items: center; gap: 14px; height: 46px; padding: 0 26px; border-bottom: 1px solid var(--rule); position: sticky; top: 0; z-index: 30; background: var(--bg); font-size: 12.5px; color: var(--dim); }
+.strip .crumb { flex: 1; }
+.strip .crumb b { color: var(--fg); font-weight: 600; }
+.strip button { background: none; border: 1px solid var(--rule); border-radius: 5px; padding: 3px 9px; font-size: 11.5px; color: var(--dim); cursor: pointer; }
+.strip button:hover { color: var(--fg); border-color: var(--dim); }
+
+.md { max-width: 66ch; }
+.md h1 { font-size: 33px; font-weight: 700; letter-spacing: -.032em; margin: 0 0 12px; text-wrap: balance; }
+.md h2 { font-size: 20px; font-weight: 700; letter-spacing: -.016em; margin: 42px 0 8px; text-wrap: balance; scroll-margin-top: 60px; }
+.md h3 { font-size: 12px; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); margin: 28px 0 7px; scroll-margin-top: 60px; }
+.md p, .md li { font-size: 14.8px; line-height: 1.68; }
+.md a { color: var(--accent); text-underline-offset: 3px; }
+.md code { font-family: var(--mono); font-size: .86em; background: var(--code); padding: 1px 5px; border-radius: 3px; }
+.md pre { background: var(--term); color: var(--termfg); border-radius: 6px; padding: 14px 16px; font: 12.5px/1.6 var(--mono); overflow-x: auto; }
+.md pre code { background: none; padding: 0; }
+.md blockquote { margin: 0; border-left: 3px solid var(--accent); padding: 2px 0 2px 16px; color: var(--dim); }
+.md table { font-size: 13.4px; width: 100%; }
+.md th { text-align: left; font-size: 10.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--faint); padding: 0 16px 6px 0; border-bottom: 1px solid var(--rule); }
+.md td { padding: 7px 16px 7px 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
+.tablewrap { overflow-x: auto; }
+
+.term { background: var(--term); color: var(--termfg); display: flex; flex-direction: column; min-height: 0; }
+.page.three > .term { position: sticky; top: 0; height: 100vh; border-left: 1px solid var(--rule); }
+.term .bar { display: flex; align-items: center; gap: 8px; padding: 9px 15px; border-bottom: 1px solid var(--termrule); font: 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--termdim); flex: none; }
+.term .bar .dot { width: 7px; height: 7px; border-radius: 50%; background: #2E3338; flex: none; }
+.term .out { flex: 1; overflow: auto; padding: 16px 18px 48px; font: 12.4px/1.66 var(--mono); white-space: pre-wrap; }
+.term .out .cmd { color: var(--caret); }
+.term .out .cmd::before { content: "$ "; color: #4C555C; }
+.term .out .cm { color: var(--termdim); }
+.term .out .ok { color: #6FCF97; }
+.term-inline { border-radius: 7px; overflow: hidden; margin: 20px 0; max-height: 280px; }
+.term-inline .out { padding-bottom: 14px; }
+
+/* in-page contents, used by several reference treatments */
+.toc { padding: 26px 20px; font-size: 12.2px; position: sticky; top: 46px; align-self: start; max-height: calc(100vh - 46px); overflow: auto; }
+.toc .h { font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); margin-bottom: 11px; }
+.toc a { display: block; text-decoration: none; color: var(--dim); padding: 3px 0 3px 12px; border-left: 1px solid var(--rule); }
+.toc a.sub { padding-left: 24px; font-size: 11.4px; }
+.toc a:hover { color: var(--fg); border-left-color: var(--dim); }
+.toc a.on { color: var(--accent); border-left-color: var(--accent); }
+.toc-float { float: right; width: 190px; margin: 4px 0 22px 30px; border-left: 1px solid var(--rule); padding-left: 0; }
+
+/* ---------- landing pieces ---------- */
+.hero h1 { font-weight: 700; letter-spacing: -.038em; line-height: 1.04; margin: 6px 0 16px; text-wrap: balance; }
+.hero .sub { color: var(--dim); margin: 0 0 26px; }
+.steps { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 36px; }
+.steps .pill { font: 13px var(--mono); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 9px 13px; }
+.why div { border-top: 1px solid var(--rule); padding: 15px 0; }
+.why h4 { margin: 0 0 4px; font-size: 14.5px; }
+.why p { margin: 0; font-size: 13.6px; color: var(--dim); max-width: 58ch; }
+.outlink { margin-top: 34px; font-size: 13.6px; color: var(--dim); }
+.outlink a { color: var(--accent); }
+.installblock { background: var(--term); color: var(--termfg); border-radius: 8px; padding: 16px 18px; font: 13px/2 var(--mono); margin-bottom: 34px; }
+.installblock .p { color: #4C555C; }
+.installblock .c { color: var(--caret); }
+.stations { display: grid; grid-template-columns: repeat(3,1fr); margin: 6px 0 38px; }
+.stations .st { padding: 20px 18px 0 0; position: relative; }
+.stations .st::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--rule); }
+.stations .st::after { content: ""; position: absolute; left: 0; top: -4.5px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--bg); }
+.stations .n { font: 10px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
+.stations code { font: 13px var(--mono); color: var(--accent); display: block; margin-bottom: 6px; }
+.stations span.d { font-size: 13px; color: var(--dim); }
+.servetable { width: 100%; font-size: 13.4px; margin-bottom: 30px; }
+.servetable th { text-align: left; font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: var(--faint); padding: 0 14px 6px 0; border-bottom: 1px solid var(--rule); }
+.servetable td { padding: 6px 14px 6px 0; border-bottom: 1px solid var(--hair); font-family: var(--mono); font-size: 12.6px; }
+.servetable td.d { font-family: var(--body); font-size: 13px; color: var(--dim); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 30px; }
+.chips span { font: 12px var(--mono); border: 1px solid var(--rule); border-radius: 999px; padding: 4px 11px; color: var(--dim); background: var(--paper); }
+.probs { display: grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 22px 30px; }
+.probs .n { font: 10px var(--mono); letter-spacing: .18em; color: var(--accent); margin-bottom: 6px; }
+.probs h4 { margin: 0 0 4px; font-size: 14.5px; }
+.probs p { margin: 0; font-size: 13.4px; color: var(--dim); }
+/* ---------- the 50/50 pitch: what it removes | what it adds ---------- */
+.hh { margin-bottom: 4px; }
+.hh .ix { font: 10px var(--mono); letter-spacing: .18em; color: var(--accent); display: block; margin-bottom: 6px; }
+.hh b { display: block; font-size: 17px; letter-spacing: -.015em; margin-bottom: 3px; }
+.hh .nt { display: block; font-size: 13px; color: var(--dim); }
+.it h4 { margin: 0 0 4px; font-size: 14.2px; }
+.it p { margin: 0; font-size: 13.4px; color: var(--dim); }
+
+.split2 { display: grid; grid-template-columns: repeat(auto-fit,minmax(270px,1fr)); gap: 26px; margin-bottom: 8px; }
+.split2 .half .it { border-top: 1px solid var(--rule); padding: 13px 0; }
+.split2 .half .hh { padding-bottom: 10px; }
+
+.band { margin-bottom: 26px; }
+.band .hh { border-top: 2px solid var(--fg); padding-top: 12px; margin-bottom: 12px; }
+.band.add .hh { border-top-color: var(--accent); }
+.band .bandrows { display: grid; grid-template-columns: repeat(auto-fit,minmax(215px,1fr)); gap: 20px 26px; }
+
+.ledger { border-top: 1px solid var(--rule); margin-bottom: 8px; }
+.ledger .lg { font: 10px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--accent); padding: 18px 0 8px; }
+.ledger .lr { display: grid; grid-template-columns: minmax(150px,26%) 1fr; gap: 20px; padding: 11px 0; border-top: 1px solid var(--hair); }
+.ledger .lr b { font-size: 14px; }
+.ledger .lr span { font-size: 13.2px; color: var(--dim); }
+
+.panel { border: 1px solid var(--rule); border-radius: 9px; padding: 18px 20px 6px; background: var(--paper); }
+.panel.add { border-color: var(--accent); background: var(--soft); }
+.panel .it { padding: 12px 0; border-top: 1px solid var(--rule); }
+.panel.add .it { border-top-color: rgba(31,122,107,.25); }
+.panel .hh { padding-bottom: 8px; }
+
+.spine { position: relative; padding-left: 26px; margin-bottom: 8px; }
+.spine::before { content: ""; position: absolute; left: 4px; top: 10px; bottom: 10px; width: 1px; background: var(--rule); }
+.spine .sg { padding: 20px 0 6px; position: relative; }
+.spine .sg::before { content: ""; position: absolute; left: -26px; top: 26px; width: 9px; height: 9px; border-radius: 50%; background: var(--fg); }
+.spine .sr { padding: 11px 0; position: relative; }
+.spine .sr::before { content: ""; position: absolute; left: -26px; top: 17px; width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--rule); background: var(--bg); }
+.spine .sr.add::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--soft); }
+.spine .sr h4 { margin: 0 0 4px; font-size: 14.2px; }
+.spine .sr p { margin: 0; font-size: 13.4px; color: var(--dim); max-width: 58ch; }
+
+/* ---------- cheatsheet treatments ---------- */
+.cheatgrid { display: grid; grid-template-columns: repeat(auto-fit,minmax(238px,1fr)); gap: 13px; }
+.cheatgrid section { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 15px 17px; }
+.cheatgrid h3 { margin: 0 0 10px; font-size: 10.5px; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); }
+.cheatgrid dl { margin: 0; }
+.cheatgrid dt { font: 12.4px var(--mono); }
+.cheatgrid dd { margin: 0 0 8px; font-size: 11.8px; color: var(--dim); }
+
+.cheattable { width: 100%; font-size: 12.6px; }
+.cheattable th { text-align: left; font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); padding: 0 14px 5px 0; border-bottom: 1px solid var(--fg); }
+.cheattable td { padding: 4px 14px 4px 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
+.cheattable td.k { font-family: var(--mono); white-space: nowrap; }
+.cheattable td.g { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.cheattable td.d { color: var(--dim); }
+.cheattable tr.first td { padding-top: 16px; border-top: 1px solid var(--rule); }
+
+.cheatcols { columns: 4 210px; column-gap: 26px; font-size: 12.2px; }
+.cheatcols section { break-inside: avoid; margin: 0 0 16px; }
+.cheatcols h3 { margin: 0 0 5px; font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); border-bottom: 1px solid var(--rule); padding-bottom: 3px; }
+.cheatcols dl { margin: 0; }
+.cheatcols dt { font: 11.8px var(--mono); }
+.cheatcols dd { margin: 0 0 5px; font-size: 11.2px; color: var(--dim); }
+
+.cheatpanels { display: grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap: 16px; }
+.cheatpanels > div { border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--paper); }
+.cheatpanels .ph { padding: 12px 18px; border-bottom: 1px solid var(--rule); }
+.cheatpanels .ph b { display: block; font-size: 14px; }
+.cheatpanels .ph span { font-size: 12px; color: var(--dim); }
+.cheatpanels .pb { padding: 6px 18px 16px; }
+.cheatpanels h3 { margin: 14px 0 6px; font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+.cheatpanels dl { margin: 0; }
+.cheatpanels dt { font: 12.2px var(--mono); }
+.cheatpanels dd { margin: 0 0 6px; font-size: 11.6px; color: var(--dim); }
+
+.cheatsticky { border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--paper); }
+.cheatsticky .gh { position: sticky; top: 46px; background: var(--fg); color: var(--bg); font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; padding: 6px 18px; z-index: 5; }
+.cheatsticky .r { display: grid; grid-template-columns: minmax(180px,32%) 1fr; gap: 18px; padding: 5px 18px; border-bottom: 1px solid var(--hair); font-size: 12.4px; }
+.cheatsticky .r b { font-family: var(--mono); font-weight: 400; }
+.cheatsticky .r span { color: var(--dim); font-size: 11.8px; }
+
+/* ---------- the stdout block treatments ---------- */
+.fixture { border: 1px solid var(--rule); background: var(--paper); border-radius: 7px; padding: 11px 15px; font-size: 12.5px; color: var(--dim); margin: 0 0 16px; }
+.fixture code { font-family: var(--mono); font-size: .92em; }
+/* NOTE: no overflow:hidden here. It makes the box its own scroll container,
+   so the sticky head stops tracking the viewport and paints over line 1. */
+.stdout { background: var(--term); color: var(--termfg); border-radius: 7px; }
+.stdout .head { display: flex; align-items: center; gap: 10px; padding: 9px 15px; border-bottom: 1px solid var(--termrule); font: 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--termdim); position: sticky; top: 46px; background: var(--term); z-index: 4; border-radius: 7px 7px 0 0; }
+.stdout .head .grow { flex: 1; }
+.stdout .head button { background: none; border: 1px solid var(--termrule); border-radius: 4px; color: var(--termdim); font: 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: 3px 8px; cursor: pointer; }
+.stdout .head button:hover { color: var(--termfg); border-color: var(--termdim); }
+.stdout pre { margin: 0; padding: 18px 20px 30px; font: 12.4px/1.66 var(--mono); white-space: pre-wrap; overflow-x: auto; }
+.stdout .tHead { color: var(--tHead); }
+.stdout .tCode { color: var(--tCode); }
+.stdout .tDim { color: var(--tDim); }
+.stdout .numbered { padding: 14px 0 30px; border-radius: 0 0 7px 7px; }
+.stdout .numbered .l { display: grid; grid-template-columns: 56px 1fr; }
+.stdout .numbered .l > i { font-style: normal; color: #454C48; text-align: right; padding-right: 14px; font-variant-numeric: tabular-nums; user-select: none; }
+.stdout .numbered .l > span { white-space: pre-wrap; padding-right: 20px; }
+.stdout details { border-bottom: 1px solid var(--termrule); }
+.stdout details > summary { cursor: pointer; padding: 9px 20px; font: 12.4px var(--mono); color: var(--tHead); display: flex; gap: 10px; align-items: center; }
+.stdout details > summary::before { content: "▸"; color: var(--termdim); }
+.stdout details[open] > summary::before { content: "▾"; }
+.stdout details > summary span { color: var(--termdim); margin-left: auto; font-size: 10.5px; }
+.stdout details pre { padding-top: 4px; }
+.stdout .withindex { display: grid; grid-template-columns: 208px minmax(0,1fr); }
+.stdout .withindex .ix { border-right: 1px solid var(--termrule); padding: 14px 0 30px; position: sticky; top: 84px; align-self: start; max-height: calc(100vh - 100px); overflow: auto; }
+.stdout .withindex .ix a { display: block; text-decoration: none; color: var(--termdim); font: 11.6px var(--mono); padding: 3px 14px 3px 18px; }
+.stdout .withindex .ix a:hover { color: var(--termfg); background: rgba(255,255,255,.04); }
+
+@media (max-width: 1100px) {
+  .page.three { grid-template-columns: 254px minmax(0,1fr); }
+  .page.three > .term { position: static; height: 300px; border-left: 0; border-top: 1px solid var(--rule); }
+  .toc { position: static; max-height: none; }
+}
+@media (max-width: 860px) {
+  .page, .page.three { grid-template-columns: minmax(0,1fr) !important; }
+  .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 24px; }
+  .pad { padding: 24px 20px 90px !important; }
+  .toc-float { float: none; width: auto; margin: 0 0 22px; }
+  .stdout .withindex { grid-template-columns: minmax(0,1fr); }
+  .stdout .withindex .ix { border-right: 0; border-bottom: 1px solid var(--termrule); position: static; max-height: 200px; }
+}
+
+/* ---------- picker ---------- */
+#picker { position: fixed; right: 18px; bottom: 18px; z-index: 9999; width: 300px; background: #0a0a0a; color: #f4f4f4; border: 1px solid #3a3a3a; border-radius: 10px; box-shadow: 0 18px 44px rgba(0,0,0,.5); font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: none; }
+#picker .grab { cursor: grab; padding: 8px 10px; border-bottom: 1px solid #2a2a2a; display: flex; justify-content: space-between; align-items: center; }
+#picker .grab:active { cursor: grabbing; }
+#picker .grab b { letter-spacing: .12em; text-transform: uppercase; font-size: 10px; color: #8d8d8d; font-weight: 600; }
+#picker .body { padding: 10px; display: grid; gap: 9px; }
+#picker .now { display: flex; align-items: center; gap: 8px; }
+#picker .now button { background: #1d1d1d; border: 1px solid #3a3a3a; color: #eee; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; line-height: 1; }
+#picker .now button:hover { background: #2c2c2c; }
+#picker .now .label { flex: 1; text-align: center; overflow: hidden; }
+#picker .now .label strong { display: block; color: #fff; font-size: 12.5px; }
+#picker .now .label span { color: #8d8d8d; font-size: 10.5px; }
+#picker .row { display: flex; gap: 5px; flex-wrap: wrap; }
+#picker .row .k { color: #7a7a7a; width: 42px; flex: none; align-self: center; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+#picker .chip { background: #171717; border: 1px solid #333; color: #bbb; padding: 3px 8px; border-radius: 999px; cursor: pointer; }
+#picker .chip:hover { border-color: #555; color: #eee; }
+#picker .chip[aria-pressed="true"] { background: #f4f4f4; color: #0a0a0a; border-color: #f4f4f4; }
+#picker .hint { color: #6a6a6a; font-size: 10.5px; border-top: 1px solid #2a2a2a; padding-top: 8px; }
+</style>
+
+<div id="app"></div>
+
+<div id="picker">
+  <div class="grab" id="grab"><b>locked design · picker</b><span style="color:#5a5a5a">drag</span></div>
+  <div class="body">
+    <div class="now">
+      <button id="prev" title="previous option (←)">←</button>
+      <div class="label"><strong id="vname">—</strong><span id="vblurb">—</span></div>
+      <button id="next" title="next option (→)">→</button>
+    </div>
+    <div class="row"><span class="k">page</span><span id="views"></span></div>
+    <div class="row"><span class="k">theme</span><span id="themes"></span></div>
+    <div class="hint">every page is LOCKED · switch page and theme to review the design</div>
+  </div>
+</div>
+
+<script>
+/* ===================== content (real, from the v1 spec) ===================== */
+
+const NAV = [
+  { grp: '',          items: ['Overview'] },
+  { grp: 'Reference', items: ['Commands','Config','Trackers','Ticket skills'] },
+  { grp: 'Skills',    items: ['wayfinder','grilling','grill-with-docs','domain-modeling','research','prototype','to-spec','to-tickets','tracker'] },
+  { grp: '',          items: ['Cheatsheet'] },
+];
+
+/* The pitch is 50/50 — half what it removes, half what it adds. */
+const PROBLEMS = [
+  ['Copies drift', 'Every repo holds its own copy of every skill. One install per repo instead, with the content inside the CLI: upgrade the CLI and every skill upgrades with it.'],
+  ['Skills hardcode each other', 'A skill that says "run /grilling" only works if you kept that skill, under that name, in that harness. The render composes instead — inlined where every path needs it, a command plus its firing condition where only some do.'],
+  ['Skills assume one tracker', 'GitHub prose in a Jira repo is worse than no prose. Set a tracker value and the render appends the operations for yours. An unset tracker gets a notice that asks — never a silent guess.'],
+];
+const EXTENSION = [
+  ['Your own skills join the plan', 'Register a harness skill with a when sentence. Charting reads it and attaches the skill to every ticket the sentence covers — your pre-mortem, your frontend loop, your review checklist.'],
+  ['One setup for the whole team', 'Project scope is committed. Every contributor and every agent renders the same skills, the same tracker, and the same registrations — no per-person configuration.'],
+  ['Adoption is one command', 'wayfinder init, once per repo. Nothing to copy, nothing to keep in step, and nothing for a new joiner to install by hand.'],
+];
+const HALVES = [
+  { title: 'What it removes', note: 'Skills kept as files break in three ways.', rows: PROBLEMS },
+  { title: 'What it adds', note: 'A served skill set your team can extend.', rows: EXTENSION },
+];
+
+const STEPS = [
+  ['npm i -g wayfinder-cli', 'Install once. Homebrew works too.'],
+  ['wayfinder init', 'Writes one stub per harness, and asks for your tracker.'],
+  ['wayfinder skill wayfinder', 'Your agent runs this. Everything follows from the render.'],
+];
+
+const SERVES = [
+  ['wayfinder', 'chart a map, work its tickets'],
+  ['grilling', 'the decision-conversation protocol'],
+  ['grill-with-docs', 'grilling, with the domain model in hand'],
+  ['domain-modeling', 'ubiquitous language and ADRs'],
+  ['research', 'read primary sources, capture findings'],
+  ['prototype', 'a throwaway artifact that answers one question'],
+  ['to-spec', 'a closed map becomes a spec'],
+  ['to-tickets', 'a spec becomes implementation tickets'],
+  ['tracker', 'your tracker’s operations prose, alone'],
+];
+
+const TRACKERS = ['github cli','github mcp','gitlab cli','jira mcp','linear mcp','local','+ anything else'];
+
+const CHEAT = [
+  ['Agent commands', [
+    ['wayfinder', 'agent quickstart — the two read commands'],
+    ['wayfinder skill &lt;id&gt;', 'print one rendered skill as markdown'],
+    ['wayfinder skills', 'list every served id, description, children'],
+  ]],
+  ['Setup commands', [
+    ['wayfinder init', 'write the harness stub; idempotent, reports a diff'],
+    ['wayfinder tracker show', 'effective tracker value, doc, and winning scope'],
+    ['wayfinder tracker set &lt;value&gt;', 'set the tracker; freeform prose'],
+    ['wayfinder ticket-skill add &lt;name&gt;', 'register a harness skill'],
+    ['wayfinder ticket-skill edit &lt;name&gt;', 'change a when sentence or scope'],
+    ['wayfinder ticket-skill remove &lt;name&gt;', 'drop or tombstone a registration'],
+    ['wayfinder ticket-skill list', 'every registration with its scope'],
+    ['wayfinder doctor', 'unresolvable skill names and doc paths'],
+  ]],
+  ['Flags', [
+    ['--harness claude,agents', 'init: install targets'],
+    ['--tracker "&lt;value&gt;"', 'init: set the tracker in one pass'],
+    ['--doc &lt;path&gt;', 'tracker set: attach your own operations prose'],
+    ['--when "&lt;sentence&gt;"', 'ticket-skill: required relevance condition'],
+    ['--scope user|project|local', 'ticket-skill: which config file to write'],
+    ['--user', 'tracker set: write user scope'],
+    ['--json', 'JSON instead of TOON'],
+    ['--version, -V', 'print the version'],
+    ['--help, -h', 'full setup page'],
+  ]],
+  ['Config keys', [
+    ['tracker.value', 'freeform tracker prose, e.g. "github cli"'],
+    ['tracker.doc', 'path to your own operations doc; resolved from its config file'],
+    ['ticketSkills.&lt;name&gt;.when', 'required relevance sentence'],
+    ['ticketSkills.&lt;name&gt; = null', 'tombstone — hides an inherited registration'],
+  ]],
+  ['Config scopes', [
+    ['~/.config/wayfinder/config.json', 'user — not committed'],
+    ['.wayfinder/config.json', 'project — committed'],
+    ['.wayfinder/local.json', 'local — gitignored, wins'],
+    ['tracker', 'resolves wholesale from the nearest scope'],
+    ['ticketSkills', 'union of all scopes, keyed by name'],
+  ]],
+  ['Tracker values', [
+    ['github cli', 'shipped doc — the reference tracker'],
+    ['github mcp', 'shipped doc'],
+    ['gitlab cli', 'shipped doc'],
+    ['jira mcp', 'shipped doc'],
+    ['linear mcp', 'shipped doc'],
+    ['local', 'shipped doc — markdown files in the repo'],
+    ['anything else', 'custom: named in the render, operations left to your tools'],
+  ]],
+  ['Skill ids', [
+    ['wayfinder', 'no children'],
+    ['grilling', 'no children'],
+    ['grill-with-docs', 'domain-modeling/adr-format, /context-format'],
+    ['domain-modeling', 'domain-modeling/adr-format, /context-format'],
+    ['research', 'no children'],
+    ['prototype', 'prototype/logic, prototype/ui'],
+    ['to-spec', 'no children'],
+    ['to-tickets', 'no children'],
+    ['tracker', 'the tracker block alone'],
+  ]],
+  ['Ticket labels', [
+    ['wayfinder:map', 'the map issue'],
+    ['wayfinder:grilling', 'resolved by conversation'],
+    ['wayfinder:research', 'the answer lives outside the repo'],
+    ['wayfinder:prototype', 'a concrete artifact raises the fidelity'],
+    ['wayfinder:task', 'manual work that unblocks a decision'],
+    ['ready-for-agent', 'zero human input needed (AFK)'],
+    ['ready-for-human', 'human oversight needed (HITL)'],
+  ]],
+];
+const AGENT_GROUPS = ['Agent commands','Skill ids','Ticket labels'];
+
+const RAIL_OUT = {
+  landing: [
+    ['cmd','npm install -g wayfinder-cli'],
+    ['ok','added 1 package in 1.4s'],
+    ['',''],
+    ['cmd','wayfinder init'],
+    ['cm','? Install the stub to  ›  ◉ claude (detected)  ◯ agents'],
+    ['cm','? Issue tracker        ›  github cli'],
+    ['ok','wrote .claude/skills/wayfinder/SKILL.md'],
+    ['ok','wrote .wayfinder/config.json'],
+    ['',''],
+    ['cmd','wayfinder'],
+    ['','wayfinder — planning skills for coding agents'],
+    ['',''],
+    ['','  Your next action MUST be to run:'],
+    ['','    wayfinder skill wayfinder'],
+    ['',''],
+    ['','  wayfinder skill <id>   print one rendered skill'],
+    ['','  wayfinder skills       list everything served'],
+  ],
+  reference: [
+    ['cmd','wayfinder skills'],
+    ['','id               children                      origin'],
+    ['','wayfinder        -                             core'],
+    ['','grilling         -                             core'],
+    ['','grill-with-docs  domain-modeling/adr-format    core'],
+    ['','domain-modeling  domain-modeling/adr-format    core'],
+    ['','research         -                             core'],
+    ['','prototype        prototype/logic               core'],
+    ['','                 prototype/ui                  core'],
+    ['','to-spec          -                             core'],
+    ['','to-tickets       -                             core'],
+    ['','tracker          -                             tracker'],
+    ['',''],
+    ['cmd','wayfinder tracker show'],
+    ['','value  github cli'],
+    ['','doc    content/trackers/github-cli.md (shipped)'],
+    ['','scope  project (.wayfinder/config.json)'],
+  ],
+  cheat: [
+    ['cmd','wayfinder --help | head -40'],
+    ['','Usage: wayfinder [command] [options]'],
+    ['',''],
+    ['','Agent commands'],
+    ['','  skill <id>            print one rendered skill'],
+    ['','  skills                list everything served'],
+    ['',''],
+    ['','Setup commands'],
+    ['','  init                  write the harness stub'],
+    ['','  tracker show|set      read or set the tracker'],
+    ['','  ticket-skill ...      register harness skills'],
+    ['','  doctor                check registrations and paths'],
+    ['',''],
+    ['','Options'],
+    ['','  --json                JSON instead of TOON'],
+    ['','  -V, --version         print the version'],
+    ['','  -h, --help            this page'],
+  ],
+};
+
+/* per-section output, for the reference treatment that follows your scroll */
+const SECTION_OUT = {
+  'The agent surface': [
+    ['cmd','wayfinder skill prototype'],
+    ['cm','# Prototype'],
+    ['',''],
+    ['','A prototype is throwaway code that answers a'],
+    ['','question. The question decides the shape.'],
+    ['',''],
+    ['cm','## Children'],
+    ['','  wayfinder skill prototype/logic'],
+    ['','  wayfinder skill prototype/ui'],
+  ],
+  'Setup commands': [
+    ['cmd','wayfinder init --harness claude'],
+    ['ok','wrote .claude/skills/wayfinder/SKILL.md'],
+    ['',''],
+    ['cmd','wayfinder tracker set "jira mcp" --user'],
+    ['ok','user scope: tracker = jira mcp'],
+    ['',''],
+    ['cmd','wayfinder ticket-skill add pre-mortem \\'],
+    ['','    --when "a decision is risky"'],
+    ['ok','project scope: registered pre-mortem'],
+  ],
+  'Global options': [
+    ['cmd','wayfinder skills --json | jq -r ".[].id"'],
+    ['','wayfinder'],
+    ['','grilling'],
+    ['','grill-with-docs'],
+    ['','domain-modeling'],
+    ['','research'],
+    ['','prototype'],
+    ['','to-spec'],
+    ['','to-tickets'],
+    ['','tracker'],
+  ],
+  'Usage errors': [
+    ['cmd','wayfinder ticket-skill add pre-mortem'],
+    ['cm','error: ticket-skill add needs --when'],
+    ['',''],
+    ['','  --when is the relevance condition for this'],
+    ['','  skill. Write it as a condition, not a'],
+    ['','  description.'],
+    ['',''],
+    ['','  example:'],
+    ['','    wayfinder ticket-skill add pre-mortem \\'],
+    ['','      --when "a decision is risky"'],
+  ],
+};
+
+/* ===================== tiny markdown renderer ===================== */
+
+function esc(s) { return s.replace(/&(?!(amp|lt|gt|quot|#\d+);)/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function inline(s) {
+  return esc(s)
+    .replace(/`([^`]+)`/g, (m,c) => '<code>'+c+'</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+}
+
+function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
+
+function renderMarkdown(src) {
+  const lines = src.replace(/\r/g,'').split('\n');
+  const out = []; let i = 0; let para = [];
+  const flushP = buf => { if (buf.length) out.push('<p>'+inline(buf.join(' '))+'</p>'); buf.length = 0; };
+  while (i < lines.length) {
+    const ln = lines[i];
+    if (/^```/.test(ln)) {
+      flushP(para); i++;
+      const code = [];
+      while (i < lines.length && !/^```/.test(lines[i])) { code.push(lines[i]); i++; }
+      i++;
+      out.push('<pre><code>'+esc(code.join('\n'))+'</code></pre>');
+      continue;
+    }
+    if (/^\s*$/.test(ln)) { flushP(para); i++; continue; }
+    let m;
+    if ((m = ln.match(/^(#{1,4})\s+(.*)$/))) {
+      flushP(para);
+      const lv = m[1].length;
+      out.push('<h'+lv+' id="'+slug(m[2])+'">'+inline(m[2])+'</h'+lv+'>');
+      i++; continue;
+    }
+    if (/^\|/.test(ln)) {
+      flushP(para);
+      const rows = [];
+      while (i < lines.length && /^\|/.test(lines[i])) { rows.push(lines[i]); i++; }
+      const cells = r => r.trim().replace(/^\||\|$/g,'').split('|').map(c => c.trim());
+      const head = cells(rows[0]);
+      const bodyR = rows.slice(2).map(cells);
+      out.push('<div class="tablewrap"><table><thead><tr>'+head.map(c=>'<th>'+inline(c)+'</th>').join('')+'</tr></thead><tbody>'
+        + bodyR.map(r=>'<tr>'+r.map(c=>'<td>'+inline(c)+'</td>').join('')+'</tr>').join('') + '</tbody></table></div>');
+      continue;
+    }
+    if (/^\s*>\s?/.test(ln)) {
+      flushP(para);
+      const q = [];
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) { q.push(lines[i].replace(/^\s*>\s?/,'')); i++; }
+      out.push('<blockquote>'+renderMarkdown(q.join('\n'))+'</blockquote>');
+      continue;
+    }
+    if (/^\s*[-*]\s+/.test(ln) || /^\s*\d+\.\s+/.test(ln)) {
+      flushP(para);
+      const ord = /^\s*\d+\./.test(ln);
+      const items = [];
+      while (i < lines.length && (/^\s*[-*]\s+/.test(lines[i]) || /^\s*\d+\.\s+/.test(lines[i]))) {
+        items.push(lines[i].replace(/^\s*(?:[-*]|\d+\.)\s+/,'')); i++;
+      }
+      out.push('<'+(ord?'ol':'ul')+'>'+items.map(t=>'<li>'+inline(t)+'</li>').join('')+'</'+(ord?'ol':'ul')+'>');
+      continue;
+    }
+    if (/^---+$/.test(ln)) { flushP(para); out.push('<hr>'); i++; continue; }
+    para.push(ln); i++;
+  }
+  flushP(para);
+  return out.join('\n');
+}
+
+/* trim the newline the <script> tag itself introduces, so line 1 is line 1 */
+const MD = {
+  reference: document.getElementById('md-reference').textContent.replace(/^\n/,'').replace(/\n+$/,''),
+  skill: document.getElementById('md-skill').textContent.replace(/^\n/,'').replace(/\n+$/,''),
+};
+const HTML = { reference: renderMarkdown(MD.reference) };
+const REF_HEADS = [...HTML.reference.matchAll(/<h([23]) id="([^"]+)">(.*?)<\/h[23]>/g)]
+  .map(m => ({ lv: m[1], id: m[2], text: m[3].replace(/<[^>]+>/g,'') }));
+const SKILL_LINES = MD.skill.replace(/\r/g,'').split('\n');
+const SKILL_H2 = SKILL_LINES.map((l,n) => [l,n]).filter(([l]) => /^## /.test(l)).map(([l,n]) => ({ text: l.slice(3), line: n }));
+
+/* ===================== locked chrome ===================== */
+
+const UPSTREAM = 'https://www.aihero.dev/skills-wayfinder';
+const PAGE = { landing: 'Overview', reference: 'Commands', skill: 'wayfinder', cheat: 'Cheatsheet' };
+const CRUMB = { landing: 'Overview', reference: 'Reference / <b>Commands</b>', skill: 'Skills / <b>wayfinder</b>', cheat: '<b>Cheatsheet</b>' };
+const TERM_LABEL = { landing: 'install → init → first render', reference: 'try it', cheat: 'wayfinder --help' };
+
+function side(view) {
+  const on = PAGE[view];
+  return '<div class="side"><div class="brand">wayfinder</div><div class="ver">cli · v1.0.0</div><div class="route">'
+    + NAV.map(g => (g.grp ? '<div class="grp">'+g.grp+'</div>' : '')
+        + g.items.map(l => '<a href="#" class="'+(l===on?'on':'')+'">'+l+'</a>').join('')).join('')
+    + '</div></div>';
+}
+function strip(view) {
+  return '<div class="strip"><span class="crumb">'+CRUMB[view]+'</span><button id="themebtn">theme: '+state.theme+'</button></div>';
+}
+function outLines(lines) {
+  return lines.map(([k,t]) => t === '' ? '\n' : '<span class="'+k+'">'+esc(t)+'</span>\n').join('');
+}
+function term(view, label, cls) {
+  return '<div class="term '+(cls||'')+'"><div class="bar"><span class="dot"></span>'+label+'</div><div class="out" id="termout">'+outLines(RAIL_OUT[view])+'</div></div>';
+}
+function tocList(cls) {
+  return '<div class="'+(cls||'toc')+'"><div class="h">On this page</div>'
+    + REF_HEADS.map((h,n) => '<a href="#'+h.id+'" class="'+(h.lv==='3'?'sub':'')+(n===0?' on':'')+'">'+h.text+'</a>').join('')
+    + '</div>';
+}
+function page(cols, view, bodyHtml, third) {
+  return '<div class="page '+(cols===3?'three':'')+'">'+side(view)
+    + '<div class="col">'+strip(view)+'<div class="pad">'+bodyHtml+'</div></div>'
+    + (third||'') + '</div>';
+}
+
+/* ===================== landing treatments ===================== */
+
+const items = rows => rows.map(([h,p]) => '<div class="it"><h4>'+esc(h)+'</h4><p>'+esc(p)+'</p></div>').join('');
+const halfHead = (n,h) => '<div class="hh"><span class="ix">'+(n===0?'01':'02')+'</span><b>'+h.title+'</b><span class="nt">'+h.note+'</span></div>';
+const installBlock = () => '<div class="installblock">'
+  + STEPS.map(([c]) => '<span class="p">$</span> <span class="c">'+esc(c)+'</span>').join('\n') + '</div>';
+const stations = () => '<div class="stations">'
+  + STEPS.map(([c,d],n) => '<div class="st"><div class="n">Step '+String(n+1).padStart(2,'0')+'</div><code>'+esc(c)+'</code><span class="d">'+esc(d)+'</span></div>').join('') + '</div>';
+const serveTable = () => '<table class="servetable"><thead><tr><th>Skill id</th><th>What it is</th></tr></thead><tbody>'
+  + SERVES.map(([i,d]) => '<tr><td>'+esc(i)+'</td><td class="d">'+esc(d)+'</td></tr>').join('') + '</tbody></table>';
+const outlink = () => '<p class="outlink">New to wayfinding? This site documents the CLI, not the method — start at <a href="'+UPSTREAM+'">aihero.dev/skills-wayfinder</a>.</p>';
+
+/* The statement hero is locked. The five below differ only in how the pitch
+   shows its two halves — removes, and adds. */
+const HEAD = () => `
+  <h1 style="font-size:clamp(36px,5.2vw,58px);max-width:13ch">Your agent's planning skills, served.</h1>
+  <p class="sub" style="font-size:17px;max-width:50ch">Composed for your harness. Substituted for your issue tracker. Extended with the skills your team registered.</p>
+  ${installBlock()}`;
+
+/* LOCKED, round 4: two bordered panels, the "adds" half tinted with the accent. */
+const LANDING = [
+  { name: 'panels', blurb: 'LOCKED — two panels, the "adds" half tinted', html: () => `
+    <div class="hero">${HEAD()}
+      <div class="split2">${HALVES.map((h,n) => '<div class="panel'+(n===1?' add':'')+'">'+halfHead(n,h)+items(h.rows)+'</div>').join('')}</div>
+      ${outlink()}
+    </div>` },
+];
+
+/* ===================== reference treatments ===================== */
+
+/* LOCKED, round 3: a static rail. No in-page contents list. */
+const REFERENCE = [
+  { name: 'rail, static', blurb: 'LOCKED — third column is a fixed example', cols: 3,
+    html: () => '<div class="md">'+HTML.reference+'</div>',
+    third: () => term('reference','try it') },
+];
+
+/* ===================== the stdout block treatments ===================== */
+
+const FIXTURE = '<div class="fixture"><strong>Fixture.</strong> This page is the stdout of <code>wayfinder skill wayfinder</code>, run against a config with tracker value <code>github cli</code> and two registered ticket skills (<code>grilling-frontend-prototyping</code>, <code>pre-mortem</code>).</div>';
+const STDOUT_HEAD = () => '<div class="head"><span>$ wayfinder skill wayfinder</span><span class="grow"></span><span>'+SKILL_LINES.length+' lines</span><button>copy</button></div>';
+
+/* LOCKED, round 3: line numbers AND markdown tinting, grafted together. */
+function tintedRows() {
+  let fence = false;
+  return SKILL_LINES.map((l,n) => {
+    let cls = '';
+    if (/^```/.test(l)) { cls = 'tDim'; fence = !fence; }
+    else if (fence) cls = 'tCode';
+    else if (/^#{1,4} /.test(l)) cls = 'tHead';
+    else if (/^\s*\|/.test(l)) cls = 'tDim';
+    const t = cls ? '<span class="'+cls+'">'+esc(l)+'</span>'
+                  : esc(l).replace(/`([^`]+)`/g, '<span class="tCode">`$1`</span>');
+    return '<div class="l"><i>'+(n+1)+'</i><span>'+(t || ' ')+'</span></div>';
+  }).join('');
+}
+
+const SKILL = [
+  { name: 'tinted + numbered', blurb: 'LOCKED — the two round-3 picks, grafted', html: () =>
+    FIXTURE + '<div class="stdout">'+STDOUT_HEAD()+'<div class="numbered">'+tintedRows()+'</div></div>' },
+];
+
+/* ===================== cheatsheet treatments ===================== */
+
+/* LOCKED, round 3: one dense table, no cards. */
+const CHEATSHEET = [
+  { name: 'one table', blurb: 'LOCKED — no cards, maximum density', html: () =>
+    '<table class="cheattable"><thead><tr><th>Group</th><th>Item</th><th>Meaning</th></tr></thead><tbody>'
+      + CHEAT.flatMap(([t,rows]) => rows.map(([k,d],n) => '<tr'+(n===0?' class="first"':'')+'><td class="g">'+(n===0?t:'')+'</td><td class="k">'+k+'</td><td class="d">'+d+'</td></tr>')).join('')
+      + '</tbody></table>' },
+];
+
+const TREATMENTS = { landing: LANDING, reference: REFERENCE, skill: SKILL, cheat: CHEATSHEET };
+const VIEWS = [['landing','landing'],['reference','reference'],['skill','skill page'],['cheat','cheatsheet']];
+
+/* ===================== state + wiring ===================== */
+
+const state = { view: 'landing', opt: { landing: 0, reference: 0, skill: 0, cheat: 0 }, theme: 'system' };
+
+(function readURL() {
+  const p = new URLSearchParams(location.search);
+  if (VIEWS.some(([k]) => k === p.get('view'))) state.view = p.get('view');
+  const o = parseInt(p.get('opt'), 10);
+  if (o >= 1 && o <= 5) state.opt[state.view] = o - 1;
+  if (['system','light','dark'].includes(p.get('theme'))) state.theme = p.get('theme');
+})();
+
+function writeURL() {
+  const p = new URLSearchParams({ view: state.view, opt: String(state.opt[state.view] + 1), theme: state.theme });
+  try { history.replaceState(null, '', location.pathname + '?' + p); } catch (e) {}
+}
+
+function applyTheme() {
+  const r = document.documentElement;
+  if (state.theme === 'system') r.removeAttribute('data-theme');
+  else r.setAttribute('data-theme', state.theme);
+}
+
+let observer = null;
+
+function render() {
+  if (observer) { observer.disconnect(); observer = null; }
+  const v = state.view;
+  const t = TREATMENTS[v][state.opt[v]];
+  applyTheme();
+  const app = document.getElementById('app');
+
+  let html;
+  if (v === 'landing')        html = page(3, v, t.html(), term('landing', TERM_LABEL.landing));
+  else if (v === 'cheat')     html = page(3, v, '<h1 style="font-size:32px;font-weight:700;letter-spacing:-.032em;margin:0 0 6px">Cheatsheet</h1>'
+                                     + '<p style="color:var(--dim);margin:0 0 24px;max-width:56ch">Every command, every flag, every config key, and the six tracker values. One screen, for a human eye.</p>'
+                                     + t.html(), term('cheat', TERM_LABEL.cheat));
+  else if (v === 'skill')     html = page(2, v, t.html(), '');
+  else                        html = page(t.cols, v, t.html(), t.third());
+
+  app.innerHTML = html;
+
+  document.getElementById('vname').textContent = (state.opt[v] + 1) + '. ' + t.name;
+  document.getElementById('vblurb').textContent = t.blurb;
+  document.querySelectorAll('#views .chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.k === v)));
+  document.querySelectorAll('#themes .chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.k === state.theme)));
+  const tb = document.getElementById('themebtn');
+  if (tb) tb.onclick = () => { state.theme = state.theme === 'system' ? 'light' : state.theme === 'light' ? 'dark' : 'system'; render(); };
+
+  /* the treatment whose rail follows the scroll */
+  if (v === 'reference' && t.sync) {
+    const outEl = document.getElementById('termout');
+    const bar = document.querySelector('.term .bar');
+    const heads = [...document.querySelectorAll('.md h2')].filter(h => SECTION_OUT[h.textContent]);
+    observer = new IntersectionObserver(entries => {
+      const hit = entries.filter(e => e.isIntersecting).sort((a,b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (!hit) return;
+      const key = hit.target.textContent;
+      outEl.innerHTML = outLines(SECTION_OUT[key]);
+      bar.innerHTML = '<span class="dot"></span>' + key.toLowerCase();
+    }, { rootMargin: '-46px 0px -55% 0px' });
+    heads.forEach(h => observer.observe(h));
+  }
+
+  writeURL();
+  window.scrollTo(0, 0);
+}
+
+function step(n) {
+  const list = TREATMENTS[state.view];
+  state.opt[state.view] = (state.opt[state.view] + n + list.length) % list.length;
+  render();
+}
+
+document.getElementById('views').innerHTML = VIEWS.map(([k,l]) => '<button class="chip" data-k="'+k+'">'+l+'</button>').join('');
+document.getElementById('themes').innerHTML = [['system','system'],['light','light'],['dark','dark']].map(([k,l]) => '<button class="chip" data-k="'+k+'">'+l+'</button>').join('');
+document.getElementById('views').onclick = e => { const b = e.target.closest('.chip'); if (b) { state.view = b.dataset.k; render(); } };
+document.getElementById('themes').onclick = e => { const b = e.target.closest('.chip'); if (b) { state.theme = b.dataset.k; render(); } };
+document.getElementById('prev').onclick = () => step(-1);
+document.getElementById('next').onclick = () => step(1);
+
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (e.key === 'ArrowLeft') { step(-1); e.preventDefault(); }
+  if (e.key === 'ArrowRight') { step(1); e.preventDefault(); }
+});
+
+(function () {
+  const p = document.getElementById('picker'), g = document.getElementById('grab');
+  let dx = 0, dy = 0, dragging = false;
+  g.addEventListener('pointerdown', e => {
+    dragging = true; g.setPointerCapture(e.pointerId);
+    const r = p.getBoundingClientRect();
+    dx = e.clientX - r.left; dy = e.clientY - r.top;
+    p.style.right = 'auto'; p.style.bottom = 'auto'; p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+  });
+  g.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    p.style.left = Math.max(4, Math.min(window.innerWidth - p.offsetWidth - 4, e.clientX - dx)) + 'px';
+    p.style.top = Math.max(4, Math.min(window.innerHeight - p.offsetHeight - 4, e.clientY - dy)) + 'px';
+  });
+  g.addEventListener('pointerup', e => { dragging = false; g.releasePointerCapture(e.pointerId); });
+})();
+
+render();
+</script>
