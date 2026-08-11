@@ -51,7 +51,18 @@ jobs:
       # bump runs here, not by hand. HOMEBREW_TAP_TOKEN is a fine-grained token
       # scoped to the tap repo with contents-write, the pipeline's only
       # long-lived credential.
+      #
+      # The tap is a second distribution channel, not a gate on the first: until
+      # HOMEBREW_TAP_TOKEN exists, a release still publishes to npm and this step
+      # reports the gap in the job summary instead of failing a good release. The
+      # guard is on the secret's absence alone — once the tap is configured, a
+      # bump that fails still fails the release, which is the point.
       - name: Bump Homebrew tap formula
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        run: ./scripts/bump-tap.sh "${GITHUB_REF_NAME}"
+        run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::notice::Homebrew tap not configured — set HOMEBREW_TAP_TOKEN to enable the formula bump. The npm release is unaffected."
+            exit 0
+          fi
+          ./scripts/bump-tap.sh "${GITHUB_REF_NAME}"
