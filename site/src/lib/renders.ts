@@ -104,6 +104,19 @@ async function capture(argv: string[]): Promise<string> {
  */
 let listingPromise: Promise<Listing> | undefined;
 let rendersPromise: Promise<SkillRender[]> | undefined;
+let versionPromise: Promise<string> | undefined;
+
+/**
+ * The version of the CLI this site documents, from `wayfinder --version`.
+ *
+ * The route sidebar prints it on every page. It is captured through the seam,
+ * the same way every skill render is, so the site states the version of the
+ * build it renders from and cannot drift from it at a release.
+ */
+export function cliVersion(): Promise<string> {
+  versionPromise ??= capture(['--version']).then((stdout) => stdout.trim());
+  return versionPromise;
+}
 
 /** What `wayfinder skills` serves: the top-level ids and their children. */
 export function servedSkills(): Promise<Listing['skills']> {

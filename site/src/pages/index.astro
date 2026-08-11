@@ -23,17 +23,22 @@ if (!hero || !install || !panels || !upstream) {
     <h1>{hero.headline}</h1>
     <p class="sub">{hero.sub}</p>
 
-    {/* The locked block prints the commands and nothing else. Each `note` in
-        the copy has no home in this design; what the landing page claims about
-        installing is wayfinder ticket #62. */}
-    <div class="installblock">{
-        install.map(({ command }, n) => [
-          <span class="p">$</span>,
-          ' ',
-          <span class="c">{command}</span>,
-          n < install.length - 1 ? '\n' : '',
-        ])
-      }</div>
+    {/* One step per row: the command, then the note that says why it is there.
+        The locked block printed commands only, which left every `note` in the
+        copy unread. Wayfinder ticket #62 added the note; the design README
+        records it under verdict 8. */}
+    <div class="installblock">
+      {
+        install.map(({ command, note }) => (
+          <div class="step">
+            <div class="cmd">
+              <span class="p">$</span> <span class="c">{command}</span>
+            </div>
+            <p class="note">{note}</p>
+          </div>
+        ))
+      }
+    </div>
 
     <div class="split2">
       {

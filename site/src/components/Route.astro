@@ -11,6 +11,7 @@
  */
 import { route } from '../lib/nav';
 import { href } from '../lib/href';
+import { cliVersion } from '../lib/renders';
 
 interface Props {
   /** The station id of the page drawing this route. */
@@ -19,11 +20,16 @@ interface Props {
 
 const { current } = Astro.props;
 const groups = await route();
+
+// The version comes from `wayfinder --version`, never from a string written
+// here. A hardcoded `v1.0.0` shipped on every page while npm served 0.1.1;
+// wayfinder ticket #62 replaced it with the capture.
+const version = await cliVersion();
 ---
 
 <div class="side">
   <div class="brand"><a href={href('/')}>wayfinder</a></div>
-  <div class="ver">cli &middot; v1.0.0</div>
+  <div class="ver">cli &middot; v{version}</div>
 
   <nav class="route" aria-label="Site">
     {

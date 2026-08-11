@@ -78,6 +78,10 @@ The four reference pages are short enough to scroll. A contents list would take 
 
 The hero is one oversized line, one supporting line, and the install commands in a dark block.
 
+**Added after the lock: each command carries a note.** The prototype printed commands alone, so the three notes the copy writes for the install steps reached no reader. [Decide what the landing page claims about installing](https://github.com/will-ness-ai/wayfinder-cli/issues/62) put them on the page, one per row, under the command they explain. The note takes the body font, because it is prose rather than output, and the colour `--termdim` — the muted tone the terminal column already gives a comment, not a new value. Measured at 4.3:1 against `--term`, which is below AA for 13px text and equal to the tone the terminal column ships.
+
+The row also ends an accident. The prototype set no `white-space` on the block, so its three commands collapsed onto one wrapped line that broke mid-command on a narrow viewport. A note cannot attach to a command that shares a line with two others, so the collapse is gone.
+
 Below it, the pitch splits **50/50** into two bordered panels:
 
 | Panel | Holds |
