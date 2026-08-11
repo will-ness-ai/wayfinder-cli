@@ -11,19 +11,6 @@
  *   domain-modeling formats). They serve through `wayfinder skill <id>` but do
  *   not list on their own; they appear only as a parent's child.
  */
-/**
- * A dependency composed into a host body at a marker site, not in place of the
- * whole body. The host renders its own body, with the marker replaced by the
- * dependency composed raw — frontmatter stripped, headings demoted — so the
- * dependency appears exactly once, anchored where the host references it.
- */
-export interface AnchoredInline {
-  /** The literal marker line in the host source, replaced by the composed dependency. */
-  marker: string;
-  /** The dependency id whose body composes in at the marker. */
-  dependency: string;
-}
-
 export interface SkillEntry {
   /** The logical id, as typed after `wayfinder skill`. */
   id: string;
@@ -69,6 +56,19 @@ export interface SkillEntry {
    * every render ends with this repo's tracker operations.
    */
   trackerBlock?: boolean;
+}
+
+/**
+ * A dependency composed into a host body at a marker site, not in place of the
+ * whole body. The host renders its own body, with the marker replaced by the
+ * dependency composed raw — frontmatter stripped, headings demoted — so the
+ * dependency appears exactly once, anchored where the host references it.
+ */
+export interface AnchoredInline {
+  /** The literal marker line in the host source, replaced by the composed dependency. */
+  marker: string;
+  /** The dependency id whose body composes in at the marker. */
+  dependency: string;
 }
 
 /** The forked skills, in listing order. These are the rows `wayfinder skills` prints. */
