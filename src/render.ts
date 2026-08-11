@@ -40,16 +40,43 @@ export function renderSkill(entry: SkillEntry, config: ResolvedConfig): string {
     sections.push(childrenBlock(entry.children));
   }
 
+  if (entry.trackerBlock) {
+    sections.push(renderTrackerBlock(config));
+  }
+
   return `${sections.map((section) => section.trimEnd()).join('\n\n')}\n`;
 }
 
-/** The host's own body, with the tracker line named when the entry carries a pointer. */
+/**
+ * The host's own body, with each render-time substitution applied: the tracker
+ * line named when the entry carries a pointer, and each anchored dependency
+ * composed in at its marker. A host with anchored inlines keeps its own body and
+ * gains the dependency at the marker; that is the difference from {@link inlines},
+ * which replace the body wholesale.
+ */
 function ownBody(entry: SkillEntry, config: ResolvedConfig): string {
-  const { body } = parseSource(readContent(sourceOf(entry)));
+  let { body } = parseSource(readContent(sourceOf(entry)));
   if (entry.trackerPointer) {
-    return body.replace(TRACKER_LINE_ANCHOR, trackerPointerLine(config));
+    body = substitute(body, TRACKER_LINE_ANCHOR, trackerPointerLine(config), entry.id);
+  }
+  for (const { marker, dependency } of entry.anchoredInlines ?? []) {
+    body = substitute(body, marker, inlineBody(dependency), entry.id);
   }
   return body;
+}
+
+/**
+ * Replace one anchor in a host body with composed content. A replacer function
+ * inserts the content verbatim — `String.replace` reads `$&`, `$$` and friends
+ * in a string replacement as patterns, and a composed dependency body is
+ * arbitrary markdown. A missing anchor is a broken render contract, not a silent
+ * omission, so it throws rather than dropping the substitution.
+ */
+function substitute(body: string, anchor: string, content: string, hostId: string): string {
+  if (!body.includes(anchor)) {
+    throw new Error(`Skill "${hostId}" source is missing its render anchor "${anchor}".`);
+  }
+  return body.replace(anchor, () => content);
 }
 
 /** One row of the `wayfinder skills` listing. */

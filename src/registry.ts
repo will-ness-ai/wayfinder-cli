@@ -11,6 +11,19 @@
  *   domain-modeling formats). They serve through `wayfinder skill <id>` but do
  *   not list on their own; they appear only as a parent's child.
  */
+/**
+ * A dependency composed into a host body at a marker site, not in place of the
+ * whole body. The host renders its own body, with the marker replaced by the
+ * dependency composed raw — frontmatter stripped, headings demoted — so the
+ * dependency appears exactly once, anchored where the host references it.
+ */
+export interface AnchoredInline {
+  /** The literal marker line in the host source, replaced by the composed dependency. */
+  marker: string;
+  /** The dependency id whose body composes in at the marker. */
+  dependency: string;
+}
+
 export interface SkillEntry {
   /** The logical id, as typed after `wayfinder skill`. */
   id: string;
@@ -43,11 +56,32 @@ export interface SkillEntry {
    * "tracker was provided to you" line. The tracker doc is never inlined here.
    */
   trackerPointer?: boolean;
+  /**
+   * Dependencies composed at marker sites inside the host body, each rendered
+   * raw and appearing exactly once. Unlike {@link inlines}, which replace the
+   * whole body, these compose in place, so the host keeps its own body around
+   * them.
+   */
+  anchoredInlines?: AnchoredInline[];
+  /**
+   * When set, the resolved tracker block appends at the bottom of the render, in
+   * whichever of its three states applies. The wayfinder render carries it, so
+   * every render ends with this repo's tracker operations.
+   */
+  trackerBlock?: boolean;
 }
 
 /** The forked skills, in listing order. These are the rows `wayfinder skills` prints. */
 export const registry: SkillEntry[] = [
-  { id: 'wayfinder', source: 'skills/wayfinder/SKILL.md', inlines: [], children: [], origin: 'core' },
+  {
+    id: 'wayfinder',
+    source: 'skills/wayfinder/SKILL.md',
+    inlines: [],
+    children: [],
+    origin: 'core',
+    anchoredInlines: [{ marker: '<!-- wayfinder:inline grilling -->', dependency: 'grilling' }],
+    trackerBlock: true,
+  },
   { id: 'grilling', source: 'skills/grilling/SKILL.md', inlines: [], children: [], origin: 'core' },
   {
     id: 'domain-modeling',
