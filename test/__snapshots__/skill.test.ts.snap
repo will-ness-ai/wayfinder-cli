@@ -533,7 +533,7 @@ Its job:
 exports[`wayfinder skill <id> > renders to-spec against a committed snapshot 1`] = `
 "This skill takes the current conversation context and codebase understanding and produces a spec (you may know this document as a PRD). Do NOT interview the user — just synthesize what you already know.
 
-The issue tracker and its label vocabulary should have been provided to you.
+No issue tracker is configured for this repo. Run \`wayfinder skill tracker\` to choose one before you publish.
 
 ## Process
 
@@ -608,7 +608,7 @@ exports[`wayfinder skill <id> > renders to-tickets against a committed snapshot 
 
 Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-The issue tracker and its label vocabulary should have been provided to you.
+No issue tracker is configured for this repo. Run \`wayfinder skill tracker\` to choose one before you publish.
 
 ## Process
 
@@ -703,6 +703,18 @@ The end-to-end behaviour this ticket makes work, from the user's perspective —
 </issue-template>
 
 In either form, avoid specific file paths or code snippets — they go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+"
+`;
+
+exports[`wayfinder skill <id> > renders tracker against a committed snapshot 1`] = `
+"## Issue tracker
+
+No issue tracker is configured for this repo, so there is no operations prose to load.
+
+Ask the human to choose one, and do not pick a tracker on your own:
+
+- Use the local markdown tracker — run \`wayfinder tracker set local\`.
+- Name this repo's tracker — run \`wayfinder tracker set "<value>"\`, for example \`wayfinder tracker set "github cli"\`.
 "
 `;
 

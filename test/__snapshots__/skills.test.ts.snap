@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`wayfinder skills > lists every served id with description and children as TOON by default 1`] = `
-"skills[8]:
+"skills[9]:
   - id: wayfinder
     description: "Plan a huge chunk of work — more than one agent session can hold — as a shared map of decision tickets on your issue tracker, and resolve them one at a time until the way to the destination is clear."
     children: []
@@ -34,5 +34,9 @@ exports[`wayfinder skills > lists every served id with description and children 
     description: "Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges as text in one file per ticket locally, or native blocking links on a real tracker."
     children: []
     origin: core
+  - id: tracker
+    description: "This repo's issue tracker and how to operate it, in whichever of its three states applies."
+    children: []
+    origin: tracker
 "
 `;

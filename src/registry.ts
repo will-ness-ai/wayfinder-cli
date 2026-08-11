@@ -14,8 +14,11 @@
 export interface SkillEntry {
   /** The logical id, as typed after `wayfinder skill`. */
   id: string;
-  /** The source file to render, relative to the content root. */
-  source: string;
+  /**
+   * The source file to render, relative to the content root. Absent on the
+   * `tracker` entry, whose render is the config-driven tracker block, not a file.
+   */
+  source?: string;
   /**
    * Dependency ids to inline at render, in order, each composed raw from its own
    * single source file. A host with inlines renders its composition, not its own
@@ -24,14 +27,22 @@ export interface SkillEntry {
   inlines: string[];
   /** Disclosed child ids, in listing and children-block order. */
   children: string[];
-  /** Where the row comes from. Every forked skill is `core`. */
-  origin: 'core';
+  /** Where the row comes from. Every forked skill is `core`; the tracker is `tracker`. */
+  origin: 'core' | 'tracker';
   /**
    * The firing condition a parent's children block prints beside this id's
    * command. Set on disclosed sub-tree leaves; the fetch is worth making only
    * when this moment arrives.
    */
   when?: string;
+  /** A built-in listing description, for an entry that has no source frontmatter. */
+  description?: string;
+  /**
+   * Set on the standalone skills whose render names the tracker and carries the
+   * conditional pointer to `wayfinder skill tracker` in place of the upstream
+   * "tracker was provided to you" line. The tracker doc is never inlined here.
+   */
+  trackerPointer?: boolean;
 }
 
 /** The forked skills, in listing order. These are the rows `wayfinder skills` prints. */
@@ -60,8 +71,29 @@ export const registry: SkillEntry[] = [
     children: ['prototype/logic', 'prototype/ui'],
     origin: 'core',
   },
-  { id: 'to-spec', source: 'skills/to-spec/SKILL.md', inlines: [], children: [], origin: 'core' },
-  { id: 'to-tickets', source: 'skills/to-tickets/SKILL.md', inlines: [], children: [], origin: 'core' },
+  {
+    id: 'to-spec',
+    source: 'skills/to-spec/SKILL.md',
+    inlines: [],
+    children: [],
+    origin: 'core',
+    trackerPointer: true,
+  },
+  {
+    id: 'to-tickets',
+    source: 'skills/to-tickets/SKILL.md',
+    inlines: [],
+    children: [],
+    origin: 'core',
+    trackerPointer: true,
+  },
+  {
+    id: 'tracker',
+    inlines: [],
+    children: [],
+    origin: 'tracker',
+    description: "This repo's issue tracker and how to operate it, in whichever of its three states applies.",
+  },
 ];
 
 /**

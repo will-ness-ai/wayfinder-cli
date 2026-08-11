@@ -24,6 +24,12 @@ USAGE
   wayfinder skill <id>     Print one skill, rendered as markdown.
   wayfinder skills         List every skill served, with its description and children.
 
+SETUP
+  wayfinder tracker show               Report the effective tracker and the scope it came from.
+  wayfinder tracker set [<value>]      Record this repo's issue tracker. Runs a form on a
+    [--doc <path>] [--user]            terminal; takes flags with no TTY. --doc attaches an
+                                       operations doc by path; --user writes the user scope.
+
 OPTIONS
   --json                   Emit machine-readable JSON instead of TOON (list commands).
   --version, -V            Print the version.

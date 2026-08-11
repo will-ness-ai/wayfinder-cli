@@ -19,7 +19,15 @@ describe('wayfinder skills', () => {
     const ids = payload.skills.map((row) => row.id);
     expect(ids).toContain('wayfinder');
     expect(ids).toContain('to-tickets');
-    expect(ids).toHaveLength(8);
+    expect(ids).toHaveLength(9);
+  });
+
+  it('serves the tracker row with origin tracker', async () => {
+    const result = await runCli(['skills', '--json']);
+    const payload = JSON.parse(result.stdout) as SkillsPayload;
+    const tracker = payload.skills.find((row) => row.id === 'tracker');
+    expect(tracker?.origin).toBe('tracker');
+    expect(tracker?.description.length).toBeGreaterThan(0);
   });
 
   it('reports the children of skills that disclose sub-files', async () => {
@@ -42,6 +50,6 @@ describe('wayfinder skills', () => {
   it('defaults to TOON, not JSON', async () => {
     const result = await runCli(['skills']);
     expect(() => JSON.parse(result.stdout)).toThrow();
-    expect(result.stdout).toContain('skills[8]:');
+    expect(result.stdout).toContain('skills[9]:');
   });
 });
