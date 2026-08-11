@@ -24,10 +24,20 @@ interface Props {
   description: string;
   /** Omit for a two-column page. */
   terminal?: CollectionEntry<'copy'>['data']['terminal'];
+  /**
+   * For a page that has no station of its own and hangs off another one: its
+   * crumb and its canonical path. `current` still names the station to light.
+   *
+   * The four supporting-file pages use it — `prototype/ui` lights the
+   * `prototype` dot but is its own page. See src/pages/skills/[...id].astro.
+   */
+  under?: { label: string; path: string };
 }
 
-const { current, title, description, terminal } = Astro.props;
+const { current, title, description, terminal, under } = Astro.props;
 const here = await station(current);
+const label = under?.label ?? here.label;
+const path = under?.path ?? here.path;
 const documentTitle = title === 'wayfinder-cli' ? title : `${title} · wayfinder-cli`;
 ---
 
@@ -38,7 +48,7 @@ const documentTitle = title === 'wayfinder-cli' ? title : `${title} · wayfinder
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- Scrollbars and form controls follow the theme, not the browser default. -->
     <meta name="color-scheme" content="light dark" />
-    <link rel="canonical" href={new URL(href(here.path), Astro.site)} />
+    <link rel="canonical" href={new URL(href(path), Astro.site)} />
     <title>{documentTitle}</title>
     <meta name="description" content={description} />
 
@@ -62,7 +72,7 @@ const documentTitle = title === 'wayfinder-cli' ? title : `${title} · wayfinder
       <Route current={current} />
 
       <div class="col">
-        <TopStrip group={here.group} label={here.label} />
+        <TopStrip group={here.group} label={label} />
         <main class="pad"><slot /></main>
       </div>
 

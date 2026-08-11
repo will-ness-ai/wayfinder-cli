@@ -1,4 +1,5 @@
 import { getCollection } from 'astro:content';
+import { servedSkills } from './renders';
 
 /**
  * The route — the site's one navigation structure.
@@ -34,7 +35,13 @@ export interface RouteGroup {
 
 /**
  * The nine served skill ids, at orders 6 to 14 — between the reference pages
- * and the cheatsheet. Every one is `ready: false` until ticket #50 renders it.
+ * and the cheatsheet. The order is the prototype's, not the CLI's registry
+ * order, so it is written out here rather than derived.
+ *
+ * The four supporting files the CLI also serves — `prototype/ui` and the three
+ * beside it — are pages, but they are not stations. They are reached from the
+ * parent that discloses them. Decided with the human on ticket #50: the route
+ * stays at 15 stations, and a supporting file is not one of them.
  */
 const SKILL_IDS = [
   'wayfinder',
@@ -54,8 +61,34 @@ const SKILL_STATIONS: Station[] = SKILL_IDS.map((id, n) => ({
   path: `/skills/${id}/`,
   group: 'Skills',
   order: 6 + n,
-  ready: false,
+  ready: true,
 }));
+
+/**
+ * Fail the build when the route and the CLI disagree about what is served.
+ *
+ * The list above is hand-ordered, so it can go stale: a skill added to or
+ * dropped from the CLI would otherwise leave a station with no page, or a page
+ * with no station, and neither shows up until someone clicks.
+ */
+async function assertRouteMatchesCli(): Promise<void> {
+  const served = (await servedSkills()).map((skill) => skill.id);
+
+  const missing = served.filter((id) => !SKILL_IDS.includes(id));
+  const stale = SKILL_IDS.filter((id) => !served.includes(id));
+  if (missing.length === 0 && stale.length === 0) return;
+
+  throw new Error(
+    [
+      'The route in src/lib/nav.ts no longer matches what `wayfinder skills` serves.',
+      missing.length > 0 && `Served, but not a station: ${missing.join(', ')}.`,
+      stale.length > 0 && `A station, but not served: ${stale.join(', ')}.`,
+      'Edit SKILL_IDS, and pick the order deliberately — it is a design choice.',
+    ]
+      .filter(Boolean)
+      .join(' '),
+  );
+}
 
 /** The landing page is the site root; every other written page is `/<id>/`. */
 function pathFor(id: string): string {
@@ -64,6 +97,8 @@ function pathFor(id: string): string {
 
 /** Every station, in route order. */
 export async function stations(): Promise<Station[]> {
+  await assertRouteMatchesCli();
+
   const written = (await getCollection('copy')).map((entry) => ({
     id: entry.id,
     label: entry.data.nav,

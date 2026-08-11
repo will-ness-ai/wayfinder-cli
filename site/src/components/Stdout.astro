@@ -1,0 +1,86 @@
+---
+/**
+ * The stdout block: the verbatim bytes of `wayfinder skill <id>`.
+ *
+ * A sticky header bar with the command, the line count, and a copy control;
+ * then one row per line, each with its number in a gutter and its markdown
+ * structure tinted. It never re-renders the markdown as prose — the page
+ * answers "what does my agent actually get", and rendered prose answers a
+ * different question. Verdict 5 in docs/prototypes/docs-site/README.md.
+ *
+ * Nothing here uses `set:html`. Astro escapes an `{expression}` and writes
+ * `set:html` raw, so the gutter and the tinting are built as elements and the
+ * escaping stays. Measured in wayfinder ticket #48.
+ */
+import { tint } from '../lib/tint';
+
+interface Props {
+  /** The command that produced the text, without the `$`. */
+  command: string;
+  /** The verbatim stdout, with no trailing newline. */
+  text: string;
+}
+
+const { command, text } = Astro.props;
+const lines = tint(text);
+---
+
+<div class="stdout">
+  <div class="head">
+    <span>$ {command}</span>
+    <span class="grow"></span>
+    <span>{lines.length} lines</span>
+    <button type="button" data-copy>copy</button>
+  </div>
+
+  {/* Each row is written on ONE line on purpose. The text span is
+      `white-space: pre-wrap`, so a newline or an indent inside it is a
+      character the reader sees. Do not let a formatter break these open. */}
+  <div class="numbered">
+    {
+      lines.map((line) => (
+        // prettier-ignore
+        <div class="l"><i>{line.number}</i><span>{line.tint ? <span class={line.tint}>{line.segments[0]!.text}</span> : line.segments.map((s) => (s.code ? <span class="tCode">{s.text}</span> : s.text))}</span></div>
+      ))
+    }
+  </div>
+</div>
+
+<script>
+  /**
+   * Copy the render back out, byte for byte.
+   *
+   * The text is read from the rows rather than carried in a data attribute or
+   * a second script tag. The rows already hold every byte, and the largest
+   * render is 16 kB — a page should not ship two copies of it.
+   *
+   * Each row's last child is the line's text span, so `textContent` gives the
+   * line back with the tinting spans flattened away. The trailing newline is
+   * added here because the capture strips it.
+   */
+  const RESET_AFTER_MS = 1400;
+
+  for (const block of document.querySelectorAll('.stdout')) {
+    const button = block.querySelector<HTMLButtonElement>('button[data-copy]');
+    if (!button) continue;
+
+    const rows = [...block.querySelectorAll('.numbered .l')];
+
+    button.addEventListener('click', async () => {
+      const text = rows.map((row) => row.lastElementChild?.textContent ?? '').join('\n');
+
+      try {
+        await navigator.clipboard.writeText(`${text}\n`);
+        button.textContent = 'copied';
+      } catch {
+        // No clipboard permission, or an insecure context. Say so rather than
+        // leaving the label reading `copy` as though it had worked.
+        button.textContent = 'press ⌘C';
+      }
+
+      setTimeout(() => {
+        button.textContent = 'copy';
+      }, RESET_AFTER_MS);
+    });
+  }
+</script>

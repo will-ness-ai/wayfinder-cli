@@ -1,0 +1,107 @@
+---
+/**
+ * One page per served skill id, holding the CLI's real rendered output.
+ *
+ * The page set comes from `wayfinder skills`, so it follows the CLI: nine
+ * top-level ids, plus the four supporting files they disclose. Nineteen pages
+ * in all across the site, and nine of them are stations on the route — a
+ * supporting file has no dot, and is reached from the parent that discloses
+ * it. Decided on wayfinder ticket #50, against verdict 2.
+ *
+ * Two columns, not three. A skill page is already terminal output, so a
+ * terminal beside it would be dead space. Verdict 3: the layout gives a page
+ * that passes no terminal the full width of the middle column.
+ */
+import type { GetStaticPaths } from 'astro';
+import Page from '../../layouts/Page.astro';
+import Stdout from '../../components/Stdout.astro';
+import { href } from '../../lib/href';
+import {
+  FIXTURE_TICKET_SKILLS,
+  FIXTURE_TRACKER,
+  servedSkills,
+  skillRenders,
+  type SkillRender,
+} from '../../lib/renders';
+
+export const getStaticPaths = (async () => {
+  const [renders, served] = await Promise.all([skillRenders(), servedSkills()]);
+  const describes = new Map(served.map((skill) => [skill.id, skill.description]));
+
+  return renders.map((render) => ({
+    params: { id: render.id },
+    props: {
+      render,
+      description:
+        describes.get(render.id) ??
+        `The output of \`${render.command}\`, a supporting file disclosed by \`${render.parent}\`.`,
+    },
+  }));
+}) satisfies GetStaticPaths;
+
+interface Props {
+  render: SkillRender;
+  description: string;
+}
+
+const { description } = Astro.props;
+const { id, parent, children, command, text } = Astro.props.render;
+
+/** A supporting file lights its parent's dot: that is the station it hangs off. */
+const current = `skill/${parent ?? id}`;
+
+/** Where a served id's page lives. The id carries the slashes already. */
+const pathFor = (served: string) => `/skills/${served}/`;
+---
+
+<Page
+  current={current}
+  title={id}
+  description={description}
+  under={parent ? { label: id, path: pathFor(id) } : undefined}
+>
+  <div class="fixture">
+    <strong>Fixture.</strong> This page is the stdout of <code>{command}</code>, run against a config
+    with tracker value <code>{FIXTURE_TRACKER}</code> and two registered ticket skills ({
+      FIXTURE_TICKET_SKILLS.map((skill, n) => (
+        <>
+          {n > 0 && ', '}
+          <code>{skill}</code>
+        </>
+      ))
+    }). Change either and this render changes with it.
+  </div>
+
+  {
+    children.length > 0 && (
+      <div class="fixture">
+        <strong>Supporting files.</strong> The <code>## Disclosed files</code> block below names{' '}
+        {children.length === 1 ? 'one id' : `${children.length} ids`} an agent can fetch on its own.
+        Each is served here too:{' '}
+        {children.map((child, n) => (
+          <>
+            {n > 0 && ', '}
+            <a href={href(pathFor(child))}>
+              <code>{child}</code>
+            </a>
+          </>
+        ))}
+        .
+      </div>
+    )
+  }
+
+  {
+    parent && (
+      <div class="fixture">
+        <strong>A supporting file.</strong> <code>{id}</code> is disclosed by{' '}
+        <a href={href(pathFor(parent))}>
+          <code>{parent}</code>
+        </a>
+        , which is where an agent is told to fetch it. It carries no station of its own on the route.
+      </div>
+    )
+  }
+
+  <Stdout command={command} text={text} />
+</Page>

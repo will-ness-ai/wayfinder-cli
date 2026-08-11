@@ -30,6 +30,8 @@ The route is the site's one motif. It comes from the wayfinding vocabulary the r
 
 All 15 pages stay open in the route — 1 landing, 4 reference, 9 skill, 1 cheatsheet. The nine skill ids **are** the product, so a collapsed Skills group would hide what the CLI serves. Fifteen stations fit one screen at a normal window height.
 
+The CLI also serves four **supporting files** — `domain-modeling/adr-format`, `domain-modeling/context-format`, `prototype/logic`, `prototype/ui` — which this design did not count. [Generate the skill pages from the CLI render](https://github.com/will-ness-ai/wayfinder-cli/issues/50) gave each one a page and kept all four off the route: the site builds 19 pages and lights 15 stations. A supporting-file page lights its parent's dot, and is reached from the parent's own `## Disclosed files` block. The station count above is unchanged.
+
 ### 3. The columns adapt: three, but two on a skill page
 
 Landing, reference, and cheatsheet run three columns. A skill page drops to two, and its output block runs full width.
@@ -131,5 +133,5 @@ Copy these values. They are the palette the four rounds settled on.
 
 - **The framework.** [Choose the site framework](https://github.com/will-ness-ai/wayfinder-cli/issues/47) picks it, and it must reproduce the verdicts above exactly.
 - **Where the copy comes from.** The prototype holds real copy, but [Write the reference pages and the cheatsheet](https://github.com/will-ness-ai/wayfinder-cli/issues/51) owns the final text.
-- **How the skill pages are produced.** [Generate the skill pages from the CLI render](https://github.com/will-ness-ai/wayfinder-cli/issues/50) owns the fixture config and the build step. This prototype fixes only how the output looks.
+- **How the skill pages are produced.** [Generate the skill pages from the CLI render](https://github.com/will-ness-ai/wayfinder-cli/issues/50) owned the fixture config and the build step; it is now closed, and [site/README.md](../../../site/README.md) holds what it settled. This prototype fixes only how the output looks.
 - **Search, versioned docs, and a custom domain.** All out of scope on the map.
