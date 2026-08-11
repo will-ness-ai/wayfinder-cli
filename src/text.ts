@@ -1,0 +1,37 @@
+/**
+ * The agent quickstart, printed by bare `wayfinder`. Two read commands and the
+ * start line — the whole agent surface, and nothing a human sets up.
+ */
+export const quickstart = `wayfinder — planning skills, served as markdown for coding agents.
+
+Your next action MUST be to run:
+
+  wayfinder skill wayfinder
+
+That prints the wayfinder skill in full. Then:
+
+  wayfinder skill <id>   Print one skill, rendered as markdown.
+  wayfinder skills       List every skill served, with its children.
+
+Run \`wayfinder --help\` for the developer setup page.
+`;
+
+/**
+ * The developer setup page, printed by `wayfinder --help`. It covers the read
+ * surface that this build serves; setup commands are documented as they land.
+ */
+export const help = `wayfinder — a content server that renders planning skills for coding agents.
+
+USAGE
+  wayfinder                Print the agent quickstart.
+  wayfinder skill <id>     Print one skill, rendered as markdown.
+  wayfinder skills         List every skill served, with its description and children.
+
+OPTIONS
+  --json                   Emit machine-readable JSON instead of TOON (list commands).
+  --version, -V            Print the version.
+  --help, -h               Print this page.
+
+Skill renders are always markdown. \`wayfinder skills\` prints TOON by default.
+Run \`wayfinder skills\` to discover every served id.
+`;

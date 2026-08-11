@@ -1,0 +1,34 @@
+{
+  "name": "wayfinder-cli",
+  "version": "0.1.0",
+  "description": "A content-server CLI that renders planning skills as markdown for coding agents to read.",
+  "type": "module",
+  "bin": {
+    "wayfinder": "dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "content"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.18.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@toon-format/toon": "4.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "22.18.9",
+    "eslint": "9.39.5",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.67.0",
+    "vitest": "3.2.7"
+  }
+}

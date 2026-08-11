@@ -1,0 +1,38 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`wayfinder skills > lists every served id with description and children as TOON by default 1`] = `
+"skills[8]:
+  - id: wayfinder
+    description: "Plan a huge chunk of work — more than one agent session can hold — as a shared map of decision tickets on your issue tracker, and resolve them one at a time until the way to the destination is clear."
+    children: []
+    origin: core
+  - id: grilling
+    description: "Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases."
+    children: []
+    origin: core
+  - id: domain-modeling
+    description: "Build and sharpen a project's domain model. Use when the user wants to pin down domain terminology or a ubiquitous language, record an architectural decision, or when another skill needs to maintain the domain model."
+    children[2]: domain-modeling/adr-format,domain-modeling/context-format
+    origin: core
+  - id: grill-with-docs
+    description: "A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go."
+    children[2]: domain-modeling/adr-format,domain-modeling/context-format
+    origin: core
+  - id: research
+    description: "Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo. Use when the user wants a topic researched, docs or API facts gathered, or reading legwork delegated to a background agent."
+    children: []
+    origin: core
+  - id: prototype
+    description: "Build a throwaway prototype to answer a design question. Use when the user wants to sanity-check whether a state model or logic feels right, or explore what a UI should look like."
+    children[2]: prototype/logic,prototype/ui
+    origin: core
+  - id: to-spec
+    description: "Turn the current conversation into a spec and publish it to the project issue tracker — no interview, just synthesis of what you've already discussed."
+    children: []
+    origin: core
+  - id: to-tickets
+    description: "Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges as text in one file per ticket locally, or native blocking links on a real tracker."
+    children: []
+    origin: core
+"
+`;
