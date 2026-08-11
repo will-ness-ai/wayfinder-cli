@@ -2,7 +2,9 @@
 
 The destination of the wayfinder map [wayfinder-cli — from skill set to public CLI](https://github.com/will-ness-ai/wayfinder-cli/issues/1). Assembled in [Assemble the v1 spec](https://github.com/will-ness-ai/wayfinder-cli/issues/32). Hand this file to `/to-tickets`.
 
-**Provenance.** Every implementation decision below comes from a closed ticket on the map. The table gives the ticket that holds the full reasoning. The **Testing Decisions** section is the one part the map did not decide; this session proposes it, and `/to-tickets` must confirm it with the developer.
+This file is canonical. It is published to the tracker as [wayfinder-cli v1 spec](https://github.com/will-ness-ai/wayfinder-cli/issues/34), which holds the same text. Edit the file, then update the issue.
+
+**Provenance.** Every implementation decision below comes from a closed ticket on the map. The table gives the ticket that holds the full reasoning. The **Testing Decisions** section is the one part the map did not decide; that section records where it comes from.
 
 | Area | Ticket |
 |---|---|
@@ -290,11 +292,13 @@ The command map lists served skills only. Registration mutations never touch the
 
 ## Testing Decisions
 
-The map did not decide testing. This section is a proposal. `/to-tickets` must confirm it with the developer before the tickets are published.
+The map did not decide testing. [Assemble the v1 spec](https://github.com/will-ness-ai/wayfinder-cli/issues/32) proposed this section, and the `/to-spec` session that published this spec confirmed it with the developer. Build from it as written.
 
 **What makes a good test here.** A test asserts external behavior: the bytes the CLI writes to stdout, the exit code, and the files it writes to disk. A test never asserts the shape of an internal function. The CLI is a pure content transform over two inputs — the shipped content tree and the resolved config — so the observable output is the whole contract.
 
-**The seam.** One seam is proposed: the CLI entry point, called with an argv array plus an injected environment that names the home directory, the working directory, and the TTY state. A test drives a real command and reads its output. This is the highest available seam and it covers every module below it, so no second seam is proposed.
+**The seam.** One seam: the CLI entry point, called with an argv array plus an injected environment. The environment names the home directory, the working directory, the TTY state, and the environment variables. A test drives a real command and reads its output. This is the highest available seam and it covers every module below it, so the CLI has one seam and no other.
+
+The environment variables are part of the seam because `XDG_CONFIG_HOME` moves the user-scope config directory. A test that cannot set it cannot cover that path, and a developer machine that sets it behaves differently from CI.
 
 Two consequences of the single seam:
 
@@ -311,6 +315,7 @@ Two consequences of the single seam:
 - Tracker value to filename derivation, including a value that matches no shipped file.
 - `--doc` path resolution relative to the config file that holds it, and the degrade-to-no-doc path for a missing file.
 - Config precedence: wholesale `tracker` resolution across all three scopes, `ticketSkills` union across all three scopes, and tombstone suppression.
+- User-scope config path resolution, with `XDG_CONFIG_HOME` set and unset.
 - The **Ticket skills** block renders one row per effective registration.
 - `doctor` reports an unresolvable skill name and an unresolvable doc path.
 - `init` writes the stub to each selected harness, and a second run repairs and reports a diff.
