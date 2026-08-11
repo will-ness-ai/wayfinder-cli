@@ -13,6 +13,14 @@ That file decides the design; a framework default never overrules a verdict in
 it. The framework choice and its measurements are in
 [docs/research/site-framework.md](../docs/research/site-framework.md).
 
+**The site has one element the prototype does not show**: the GitHub icon in
+the top strip, beside the `theme:` control. It is the site's only link to this
+repo, and the locked design has no footer. It was ruled in by
+[wayfinder ticket #63](https://github.com/will-ness-ai/wayfinder-cli/issues/63)
+and built by [ticket #69](https://github.com/will-ness-ai/wayfinder-cli/issues/69),
+which deliberately left the prototype unamended — so the ticket is the record,
+and the prototype still shows the theme control alone.
+
 ## A standalone project
 
 `site/` holds its own `package.json` and its own `pnpm-lock.yaml`, and the repo
