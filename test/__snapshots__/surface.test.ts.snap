@@ -1,26 +1,10 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`the top-level surface > prints the agent quickstart for bare wayfinder 1`] = `
-"wayfinder — planning skills, served as markdown for coding agents.
-
-Your next action MUST be to run:
-
-  wayfinder skill wayfinder
-
-That prints the wayfinder skill in full. Then:
-
-  wayfinder skill <id>   Print one skill, rendered as markdown.
-  wayfinder skills       List every skill served, with its children.
-
-Run \`wayfinder --help\` for the developer setup page.
-"
-`;
-
 exports[`the top-level surface > prints the full setup page for --help 1`] = `
 "wayfinder — a content server that renders planning skills for coding agents.
 
 USAGE
-  wayfinder                Print the agent quickstart.
+  wayfinder                Print the wayfinder skill, the agent's entry point.
   wayfinder skill <id>     Print one skill, rendered as markdown.
   wayfinder skills         List every skill served, with its description and children.
 

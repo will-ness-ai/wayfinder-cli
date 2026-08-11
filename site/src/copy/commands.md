@@ -94,9 +94,10 @@ operations prose.
 
 ### wayfinder
 
-Bare `wayfinder` prints the agent quickstart: the start line and the two read
-commands, and nothing else. `wayfinder --help` prints the full setup page
-instead. Two audiences, two pages.
+Bare `wayfinder` prints the wayfinder skill. It is the same bytes as `wayfinder
+skill wayfinder`, so the agent's first call needs no argument and no second hop.
+`wayfinder --help` prints the developer's setup page instead. Two audiences, two
+pages.
 
 ## Setup commands
 

@@ -4,12 +4,14 @@ import { runCli } from './fixtures/runCli.js';
 import { withTempDir } from './fixtures/tempDir.js';
 
 describe('the top-level surface', () => {
-  it('prints the agent quickstart for bare wayfinder', async () => {
-    const result = await runCli([]);
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('wayfinder skill wayfinder');
-    expect(result.stdout).toContain('wayfinder skills');
-    expect(result.stdout).toMatchSnapshot();
+  // Bare `wayfinder` is the agent's first call, so it renders the wayfinder
+  // skill. The render itself is snapshotted by the skill tests; what this one
+  // holds is that the two argv reach the same bytes, so the default can never
+  // drift into a second, weaker entry point.
+  it('renders the wayfinder skill for bare wayfinder', async () => {
+    const [bare, explicit] = await Promise.all([runCli([]), runCli(['skill', 'wayfinder'])]);
+    expect(bare.exitCode).toBe(0);
+    expect(bare.stdout).toBe(explicit.stdout);
   });
 
   it('prints the full setup page for --help', async () => {

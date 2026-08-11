@@ -18,7 +18,7 @@ terminal:
     - kind: out
       text: "USAGE"
     - kind: out
-      text: "  wayfinder                Print the agent quickstart."
+      text: "  wayfinder                Print the wayfinder skill, the agent's entry point."
     - kind: out
       text: "  wayfinder skill <id>     Print one skill, rendered as markdown."
     - kind: out
@@ -76,7 +76,7 @@ groups:
   - title: Agent commands
     rows:
       - item: wayfinder
-        meaning: the agent quickstart — the start line and the two read commands
+        meaning: print the wayfinder skill — the same bytes as wayfinder skill wayfinder
       - item: wayfinder skill &lt;id&gt;
         meaning: print one rendered skill as markdown
       - item: wayfinder skills
