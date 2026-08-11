@@ -1,6 +1,6 @@
 {
   "name": "wayfinder-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A content-server CLI that renders planning skills as markdown for coding agents to read.",
   "keywords": [
     "cli",
