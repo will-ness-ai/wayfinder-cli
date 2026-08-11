@@ -114,8 +114,8 @@ function trackerSet(parsed: ParsedArgv, env: CliEnv): CliResult {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, `${JSON.stringify(existing, null, 2)}\n`, 'utf8');
 
-  const where = doc ? ` with doc \`${doc}\`` : '';
-  return ok(`Set tracker to "${value}"${where} in ${scope} config (${file}).\n`);
+  const docNote = doc ? ` with doc \`${doc}\`` : '';
+  return ok(`Set tracker to "${value}"${docNote} in ${scope} config (${file}).\n`);
 }
 
 /**
@@ -137,13 +137,19 @@ function readConfigForWrite(file: string): Record<string, unknown> {
 
 type Flag = 'help' | 'version' | 'json' | 'user';
 
-interface ParsedArgv {
+export interface ParsedArgv {
   flags: Set<Flag>;
   options: { doc?: string };
   positionals: string[];
 }
 
-function parseArgv(argv: string[]): ParsedArgv {
+/**
+ * Parse an argv into flags, options, and positionals. The one flag vocabulary:
+ * `--doc` consumes the next word, `--user` is boolean, everything else is a
+ * positional. The process boundary shares this parser (see `bin.ts`), so its
+ * read of a command can never drift from the one {@link run} acts on.
+ */
+export function parseArgv(argv: string[]): ParsedArgv {
   const flags = new Set<Flag>();
   const options: { doc?: string } = {};
   const positionals: string[] = [];

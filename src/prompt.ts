@@ -1,5 +1,6 @@
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
+import { parseArgv } from './cli.js';
 
 /**
  * The `tracker set` terminal form. It collects the same three inputs the flags
@@ -14,7 +15,7 @@ import { stdin, stdout } from 'node:process';
  * rather than the form looping forever.
  */
 export async function promptTrackerSet(rawArgv: string[]): Promise<string[]> {
-  const preset = presetFlags(rawArgv);
+  const { flags, options } = parseArgv(rawArgv);
   const rl = createInterface({ input: stdin, output: stdout });
   try {
     let value = '';
@@ -23,10 +24,10 @@ export async function promptTrackerSet(rawArgv: string[]): Promise<string[]> {
     }
 
     const doc =
-      preset.doc ??
+      options.doc ??
       (await rl.question('Operations doc path (optional, Enter to skip): ')).trim();
 
-    let user = preset.user;
+    let user = flags.has('user');
     if (!user) {
       const scope = (await rl.question('Scope [project/user] (Enter for project): ')).trim();
       user = scope.toLowerCase() === 'user';
@@ -40,19 +41,4 @@ export async function promptTrackerSet(rawArgv: string[]): Promise<string[]> {
   } finally {
     rl.close();
   }
-}
-
-/** The doc and scope flags already present on the command line, if any. */
-function presetFlags(rawArgv: string[]): { doc?: string; user: boolean } {
-  const preset: { doc?: string; user: boolean } = { user: false };
-  for (let i = 2; i < rawArgv.length; i += 1) {
-    const arg = rawArgv[i];
-    if (arg === '--doc') {
-      i += 1;
-      if (rawArgv[i] !== undefined) preset.doc = rawArgv[i];
-    } else if (arg === '--user') {
-      preset.user = true;
-    }
-  }
-  return preset;
 }
