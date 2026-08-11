@@ -32,7 +32,7 @@ export interface ResolvedConfig {
 
 interface RawConfig {
   tracker?: { value?: string; doc?: string };
-  ticketSkills?: Record<string, { when?: string } | null>;
+  ticketSkills?: Record<string, { when: string } | null>;
 }
 
 interface ScopeSource {
@@ -94,10 +94,50 @@ function readConfigFile(path: string): RawConfig {
     return {};
   }
   try {
-    return JSON.parse(raw) as RawConfig;
+    return narrowConfig(JSON.parse(raw));
   } catch {
     return {};
   }
+}
+
+/**
+ * Narrow parsed JSON to the config shape. A config file is hand-edited, so its
+ * contents are input, not a promise: every key is checked rather than asserted,
+ * and one of the wrong type is dropped. Resolution stays tolerant — a broken key
+ * must never crash a read command — so a bad value degrades to absent, and a
+ * `when` that is not a sentence degrades to the empty one that renders visibly.
+ */
+function narrowConfig(parsed: unknown): RawConfig {
+  if (!isRecord(parsed)) return {};
+  const config: RawConfig = {};
+
+  const { tracker } = parsed;
+  if (isRecord(tracker)) {
+    config.tracker = {
+      ...(typeof tracker.value === 'string' ? { value: tracker.value } : {}),
+      ...(typeof tracker.doc === 'string' ? { doc: tracker.doc } : {}),
+    };
+  }
+
+  const skills = parsed.ticketSkills;
+  if (isRecord(skills)) {
+    const narrowed: Record<string, { when: string } | null> = {};
+    for (const [name, entry] of Object.entries(skills)) {
+      if (entry === null) {
+        narrowed[name] = null;
+      } else if (isRecord(entry)) {
+        narrowed[name] = { when: typeof entry.when === 'string' ? entry.when : '' };
+      }
+    }
+    config.ticketSkills = narrowed;
+  }
+
+  return config;
+}
+
+/** A plain JSON object — not null, and not an array. */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function resolveTracker(sources: ScopeSource[]): ResolvedTracker | undefined {
@@ -129,7 +169,7 @@ function resolveTicketSkills(sources: ScopeSource[]): ResolvedTicketSkill[] {
       if (entry === undefined) continue;
       // A tombstone (null) in the nearest scope hides the inherited registration.
       if (entry === null) break;
-      resolved.push({ name, when: entry.when ?? '', scope });
+      resolved.push({ name, when: entry.when, scope });
       break;
     }
   }

@@ -4,6 +4,7 @@ import { readContent } from './content.js';
 import type { CliEnv } from './env.js';
 import { parseSource } from './frontmatter.js';
 import { registry, type SkillEntry } from './registry.js';
+import { descriptionOf } from './render.js';
 
 /** The install targets `init` writes to, addressed by id. */
 export type HarnessId = 'claude' | 'agents';
@@ -17,7 +18,7 @@ export function isHarnessId(id: string): id is HarnessId {
 }
 
 /** Each harness's base directory, relative to the working directory; skills live under `<base>/skills`. */
-const HARNESS_BASE: Record<HarnessId, string> = {
+export const HARNESS_BASE: Record<HarnessId, string> = {
   claude: '.claude',
   agents: '.agents',
 };
@@ -103,12 +104,6 @@ function commandRow(entry: SkillEntry): string {
   return `- \`${entry.id}\` — ${descriptionOf(entry)}${note}`;
 }
 
-/** The listing description read from a served skill's source frontmatter. */
-function descriptionOf(entry: SkillEntry): string {
-  if (entry.source === undefined) return entry.description ?? '';
-  return parseSource(readContent(entry.source)).frontmatter.description ?? '';
-}
-
 /** The leaf segment of a child id: `domain-modeling/adr-format` → `adr-format`. */
 function leaf(id: string): string {
   return id.slice(id.lastIndexOf('/') + 1);
@@ -125,17 +120,16 @@ export function lineDiff(before: string, after: string): string[] {
   const a = before.split('\n');
   const b = after.split('\n');
   const lcs = lcsLengths(a, b);
+  const commonFrom = (i: number, j: number): number => lcs[i]?.[j] ?? 0;
 
   const out: string[] = [];
   let i = 0;
   let j = 0;
   while (i < a.length && j < b.length) {
-    const row = lcs[i]!;
-    const next = lcs[i + 1]!;
     if (a[i] === b[j]) {
       i += 1;
       j += 1;
-    } else if (next[j]! >= row[j + 1]!) {
+    } else if (commonFrom(i + 1, j) >= commonFrom(i, j + 1)) {
       out.push(`- ${a[i]}`);
       i += 1;
     } else {
@@ -143,19 +137,33 @@ export function lineDiff(before: string, after: string): string[] {
       j += 1;
     }
   }
-  while (i < a.length) out.push(`- ${a[i++]}`);
-  while (j < b.length) out.push(`+ ${b[j++]}`);
+  while (i < a.length) {
+    out.push(`- ${a[i]}`);
+    i += 1;
+  }
+  while (j < b.length) {
+    out.push(`+ ${b[j]}`);
+    j += 1;
+  }
   return out;
 }
 
-/** The longest-common-subsequence length table, filled from the bottom-right. */
+/**
+ * The longest-common-subsequence length table, filled from the bottom-right.
+ * `commonFrom` reads past the last row and column on purpose — the base case of
+ * the recurrence is zero — so the walk needs no separate bounds arithmetic.
+ */
 function lcsLengths(a: string[], b: string[]): number[][] {
   const table = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  const commonFrom = (i: number, j: number): number => table[i]?.[j] ?? 0;
   for (let i = a.length - 1; i >= 0; i -= 1) {
-    const row = table[i]!;
-    const next = table[i + 1]!;
+    const row = table[i];
+    if (row === undefined) continue;
     for (let j = b.length - 1; j >= 0; j -= 1) {
-      row[j] = a[i] === b[j] ? next[j + 1]! + 1 : Math.max(next[j]!, row[j + 1]!);
+      row[j] =
+        a[i] === b[j]
+          ? commonFrom(i + 1, j + 1) + 1
+          : Math.max(commonFrom(i + 1, j), commonFrom(i, j + 1));
     }
   }
   return table;

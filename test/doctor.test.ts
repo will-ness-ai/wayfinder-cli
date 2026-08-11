@@ -1,38 +1,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { inDir, installHarnessSkill, writeConfig } from './fixtures/config.js';
 import { runCli } from './fixtures/runCli.js';
 import { withTempDir } from './fixtures/tempDir.js';
-
-type Scope = 'local' | 'project' | 'user';
-
-function scopeFile(dir: string, scope: Scope): string {
-  switch (scope) {
-    case 'local':
-      return join(dir, '.wayfinder', 'local.json');
-    case 'project':
-      return join(dir, '.wayfinder', 'config.json');
-    case 'user':
-      return join(dir, '.config', 'wayfinder', 'config.json');
-  }
-}
-
-function writeConfig(dir: string, scope: Scope, config: unknown): void {
-  const file = scopeFile(dir, scope);
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify(config, null, 2), 'utf8');
-}
-
-/** Install a harness skill under one of the four locations doctor checks. */
-function installHarnessSkill(root: string, base: '.claude' | '.agents', name: string): void {
-  const file = join(root, base, 'skills', name, 'SKILL.md');
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `---\nname: ${name}\n---\n\nBody.\n`, 'utf8');
-}
-
-function inDir(dir: string): { home: string; cwd: string; isTTY: false } {
-  return { home: dir, cwd: dir, isTTY: false };
-}
 
 describe('wayfinder doctor', () => {
   it('reports a registered ticket skill that resolves to no installed harness skill', async () => {
@@ -42,6 +13,7 @@ describe('wayfinder doctor', () => {
       expect(result.exitCode).not.toBe(0);
       expect(result.stdout).toContain('pre-mortem');
       expect(result.stdout).toContain('no installed harness skill');
+      expect(result.stdout).toMatchSnapshot();
     });
   });
 
@@ -52,7 +24,7 @@ describe('wayfinder doctor', () => {
       installHarnessSkill(dir, '.agents', 'pre-mortem');
       const result = await runCli(['doctor'], inDir(dir));
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('no problems found');
+      expect(result.stdout).toMatchSnapshot();
     });
   });
 
@@ -70,8 +42,9 @@ describe('wayfinder doctor', () => {
       writeConfig(dir, 'project', { tracker: { value: 'acme', doc: './missing.md' } });
       const result = await runCli(['doctor'], inDir(dir));
       expect(result.exitCode).not.toBe(0);
-      expect(result.stdout).toContain('Tracker doc "./missing.md"');
+      expect(result.stdout).toContain('./missing.md');
       expect(result.stdout).toContain('does not resolve');
+      expect(result.stdout).toMatchSnapshot();
     });
   });
 
@@ -82,7 +55,6 @@ describe('wayfinder doctor', () => {
       writeConfig(dir, 'project', { tracker: { value: 'acme', doc: './docs/acme.md' } });
       const result = await runCli(['doctor'], inDir(dir));
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('no problems found');
     });
   });
 
@@ -90,7 +62,30 @@ describe('wayfinder doctor', () => {
     await withTempDir(async (dir) => {
       const result = await runCli(['doctor'], inDir(dir));
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('no problems found');
+      expect(result.stdout).toMatchSnapshot();
+    });
+  });
+
+  it('emits JSON under --json, and TOON without it', async () => {
+    await withTempDir(async (dir) => {
+      writeConfig(dir, 'project', { ticketSkills: { 'pre-mortem': { when: 'risky' } } });
+
+      const json = await runCli(['doctor', '--json'], inDir(dir));
+      const parsed: unknown = JSON.parse(json.stdout);
+      expect(parsed).toEqual({
+        problems: [
+          {
+            kind: 'ticket-skill',
+            subject: 'pre-mortem',
+            detail: expect.stringContaining('no installed harness skill'),
+          },
+        ],
+      });
+      // A finding still exits non-zero, whichever way it is rendered.
+      expect(json.exitCode).not.toBe(0);
+
+      const toon = await runCli(['doctor'], inDir(dir));
+      expect(() => JSON.parse(toon.stdout)).toThrow();
     });
   });
 });

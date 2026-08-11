@@ -1,39 +1,16 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { inDir, onTerminal, scopeFile, writeConfig } from './fixtures/config.js';
 import { runCli } from './fixtures/runCli.js';
 import { withTempDir } from './fixtures/tempDir.js';
-
-type Scope = 'local' | 'project' | 'user';
-
-function scopeFile(dir: string, scope: Scope): string {
-  switch (scope) {
-    case 'local':
-      return join(dir, '.wayfinder', 'local.json');
-    case 'project':
-      return join(dir, '.wayfinder', 'config.json');
-    case 'user':
-      return join(dir, '.config', 'wayfinder', 'config.json');
-  }
-}
-
-function writeConfig(dir: string, scope: Scope, config: unknown): void {
-  const file = scopeFile(dir, scope);
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify(config, null, 2), 'utf8');
-}
-
-/** Every config file resolves from the temp dir as both home and cwd. */
-function inDir(dir: string): { home: string; cwd: string; isTTY: false } {
-  return { home: dir, cwd: dir, isTTY: false };
-}
 
 describe('wayfinder tracker show', () => {
   it('reports no tracker when none is configured', async () => {
     await withTempDir(async (dir) => {
       const result = await runCli(['tracker', 'show'], inDir(dir));
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('No tracker is configured');
+      expect(result.stdout).toContain('tracker: null');
     });
   });
 
@@ -41,8 +18,20 @@ describe('wayfinder tracker show', () => {
     await withTempDir(async (dir) => {
       writeConfig(dir, 'project', { tracker: { value: 'github cli' } });
       const result = await runCli(['tracker', 'show'], inDir(dir));
-      expect(result.stdout).toContain('tracker: github cli');
+      expect(result.stdout).toContain('value: github cli');
       expect(result.stdout).toContain('scope: project');
+    });
+  });
+
+  it('emits JSON under --json, and TOON without it', async () => {
+    await withTempDir(async (dir) => {
+      writeConfig(dir, 'project', { tracker: { value: 'github cli', doc: './t.md' } });
+      const json = await runCli(['tracker', 'show', '--json'], inDir(dir));
+      expect(JSON.parse(json.stdout)).toEqual({
+        tracker: { value: 'github cli', scope: 'project', doc: './t.md' },
+      });
+      const toon = await runCli(['tracker', 'show'], inDir(dir));
+      expect(() => JSON.parse(toon.stdout)).toThrow();
     });
   });
 
@@ -52,7 +41,7 @@ describe('wayfinder tracker show', () => {
       writeConfig(dir, 'project', { tracker: { value: 'github cli' } });
       writeConfig(dir, 'local', { tracker: { value: 'local' } });
       const result = await runCli(['tracker', 'show'], inDir(dir));
-      expect(result.stdout).toContain('tracker: local');
+      expect(result.stdout).toContain('value: local');
       expect(result.stdout).toContain('scope: local');
     });
   });
@@ -69,7 +58,7 @@ describe('wayfinder tracker show', () => {
         isTTY: false,
         env: { XDG_CONFIG_HOME: xdg },
       });
-      expect(result.stdout).toContain('tracker: linear mcp');
+      expect(result.stdout).toContain('value: linear mcp');
       expect(result.stdout).toContain('scope: user');
     });
   });
@@ -100,7 +89,7 @@ describe('wayfinder tracker set', () => {
       expect(written).toEqual({ tracker: { value: 'github cli' } });
       // The written value round-trips through show.
       const show = await runCli(['tracker', 'show'], inDir(dir));
-      expect(show.stdout).toContain('tracker: github cli');
+      expect(show.stdout).toContain('value: github cli');
       expect(show.stdout).toContain('scope: project');
     });
   });
@@ -151,6 +140,92 @@ describe('wayfinder tracker set', () => {
       expect(result.stdout).toBe('');
       expect(result.stderr).toContain('tracker set needs a tracker value');
       expect(result.stderr).toContain('wayfinder tracker set "github cli"');
+    });
+  });
+});
+
+describe('the tracker set form', () => {
+  it('fills the value, the doc, and the scope from the answers', async () => {
+    await withTempDir(async (dir) => {
+      const env = onTerminal(dir, ['github cli', './docs/t.md', 'user']);
+      const result = await runCli(['tracker', 'set'], env);
+      expect(result.exitCode).toBe(0);
+      const written: unknown = JSON.parse(readFileSync(scopeFile(dir, 'user'), 'utf8'));
+      expect(written).toEqual({ tracker: { value: 'github cli', doc: './docs/t.md' } });
+    });
+  });
+
+  it('takes the project scope when the scope answer is empty', async () => {
+    await withTempDir(async (dir) => {
+      const result = await runCli(['tracker', 'set'], onTerminal(dir, ['local', '', '']));
+      expect(result.exitCode).toBe(0);
+      const written: unknown = JSON.parse(readFileSync(scopeFile(dir, 'project'), 'utf8'));
+      expect(written).toEqual({ tracker: { value: 'local' } });
+    });
+  });
+
+  it('does not re-ask for a flag already on the command line', async () => {
+    await withTempDir(async (dir) => {
+      const env = onTerminal(dir, ['github cli', '']);
+      await runCli(['tracker', 'set', '--doc', './flagged.md', '--user'], env);
+      expect(env.asked.join('\n')).not.toContain('Tracker doc path');
+      expect(env.asked.join('\n')).not.toContain('Scope [project/user]');
+      const written: unknown = JSON.parse(readFileSync(scopeFile(dir, 'user'), 'utf8'));
+      expect(written).toEqual({ tracker: { value: 'github cli', doc: './flagged.md' } });
+    });
+  });
+
+  it('gives up on an unanswerable prompt and reports the usage error', async () => {
+    await withTempDir(async (dir) => {
+      // An EOF answers empty forever; the form must stop rather than loop.
+      const env = onTerminal(dir, []);
+      const result = await runCli(['tracker', 'set'], env);
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain('tracker set needs a tracker value');
+      expect(env.asked).toHaveLength(3);
+    });
+  });
+
+  it('never runs on a TTY when the value is already given', async () => {
+    await withTempDir(async (dir) => {
+      const env = onTerminal(dir, ['should not be read']);
+      await runCli(['tracker', 'set', 'github', 'cli'], env);
+      expect(env.asked).toEqual([]);
+    });
+  });
+});
+
+describe('the local scope stays out of git', () => {
+  it('writes an ignore rule beside the local config the first time it is created', async () => {
+    await withTempDir(async (dir) => {
+      await runCli(['ticket-skill', 'add', 'pre-mortem', '--when', 'risky', '--scope', 'local'], inDir(dir));
+      const ignore = readFileSync(join(dir, '.wayfinder', '.gitignore'), 'utf8');
+      expect(ignore).toBe('local.json\n');
+    });
+  });
+
+  it('leaves an existing ignore file alone rather than duplicating the rule', async () => {
+    await withTempDir(async (dir) => {
+      mkdirSync(join(dir, '.wayfinder'), { recursive: true });
+      writeFileSync(join(dir, '.wayfinder', '.gitignore'), 'local.json\nnotes.md\n', 'utf8');
+      await runCli(['ticket-skill', 'add', 'pre-mortem', '--when', 'risky', '--scope', 'local'], inDir(dir));
+      expect(readFileSync(join(dir, '.wayfinder', '.gitignore'), 'utf8')).toBe('local.json\nnotes.md\n');
+    });
+  });
+
+  it('appends the rule to an unrelated ignore file without eating its last line', async () => {
+    await withTempDir(async (dir) => {
+      mkdirSync(join(dir, '.wayfinder'), { recursive: true });
+      writeFileSync(join(dir, '.wayfinder', '.gitignore'), 'notes.md', 'utf8');
+      await runCli(['ticket-skill', 'add', 'pre-mortem', '--when', 'risky', '--scope', 'local'], inDir(dir));
+      expect(readFileSync(join(dir, '.wayfinder', '.gitignore'), 'utf8')).toBe('notes.md\nlocal.json\n');
+    });
+  });
+
+  it('plants no ignore rule for the project scope', async () => {
+    await withTempDir(async (dir) => {
+      await runCli(['tracker', 'set', 'github', 'cli'], inDir(dir));
+      expect(existsSync(join(dir, '.wayfinder', '.gitignore'))).toBe(false);
     });
   });
 });

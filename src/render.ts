@@ -6,12 +6,15 @@ import type { ResolvedConfig } from './config.js';
 import { renderTrackerBlock, trackerPointerLine } from './tracker.js';
 
 /**
- * The upstream tracker line in `to-spec` and `to-tickets`. The render replaces
- * it with the tracker-naming pointer, so the source files stay byte-close to the
- * fork and carry no build markers.
+ * The tracker line in the `to-spec` and `to-tickets` sources. The render replaces
+ * it with the tracker-naming pointer, so those files carry no build markers and
+ * still read correctly to a human opening them.
+ *
+ * The sentence carries no label vocabulary: labels stay literal strings in the
+ * skills, and a label the tracker lacks is a question for the human, so there is
+ * no vocabulary to hand over.
  */
-const TRACKER_LINE_ANCHOR =
-  'The issue tracker and its label vocabulary should have been provided to you.';
+const TRACKER_LINE_ANCHOR = 'The issue tracker should have been provided to you.';
 
 /**
  * The marker in the wayfinder source that the skill-planning list composes in at:
@@ -141,8 +144,12 @@ export function listingFor(entry: SkillEntry): SkillListing {
   };
 }
 
-/** The listing description: a built-in string, or the source frontmatter's. */
-function descriptionOf(entry: SkillEntry): string {
+/**
+ * The description shown for an entry: a built-in string, or the source
+ * frontmatter's. The `skills` listing and the stub's command map both read it
+ * here, so a served skill can never describe itself two ways.
+ */
+export function descriptionOf(entry: SkillEntry): string {
   if (entry.source === undefined) return entry.description ?? '';
   return parseSource(readContent(entry.source)).frontmatter.description ?? '';
 }

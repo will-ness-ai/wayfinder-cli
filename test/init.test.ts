@@ -1,13 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { inDir, onTerminal } from './fixtures/config.js';
 import { runCli } from './fixtures/runCli.js';
 import { withTempDir } from './fixtures/tempDir.js';
-
-/** Every config and harness file resolves from the temp dir as both home and cwd. */
-function inDir(dir: string): { home: string; cwd: string; isTTY: false } {
-  return { home: dir, cwd: dir, isTTY: false };
-}
 
 function stubFile(dir: string, harness: 'claude' | 'agents'): string {
   const base = harness === 'claude' ? '.claude' : '.agents';
@@ -152,6 +148,85 @@ describe('init and the tracker', () => {
       await runCli(['tracker', 'set', 'github', 'cli'], inDir(dir));
       // tracker set never touches the stub — init is its only writer.
       expect(readFileSync(stubFile(dir, 'claude'), 'utf8')).toBe(before);
+    });
+  });
+});
+
+describe('the init multi-select', () => {
+  it('numbers every target and marks the ones the repo already uses', async () => {
+    await withTempDir(async (dir) => {
+      mkdirSync(join(dir, '.claude'), { recursive: true });
+      const env = onTerminal(dir, ['', '']);
+      await runCli(['init'], env);
+      const menu = env.asked[0] ?? '';
+      expect(menu).toContain('1) claude (.claude/skills/)  [detected]');
+      expect(menu).toContain('2) agents (.agents/skills/)');
+      expect(menu).toContain('Enter for claude');
+    });
+  });
+
+  it('takes the detected targets when the answer is empty', async () => {
+    await withTempDir(async (dir) => {
+      mkdirSync(join(dir, '.agents'), { recursive: true });
+      const result = await runCli(['init'], onTerminal(dir, ['', '']));
+      expect(result.exitCode).toBe(0);
+      expect(existsSync(stubFile(dir, 'agents'))).toBe(true);
+      expect(existsSync(stubFile(dir, 'claude'))).toBe(false);
+    });
+  });
+
+  it('selects by number and by id alike', async () => {
+    await withTempDir(async (dir) => {
+      await runCli(['init'], onTerminal(dir, ['1,2', '']));
+      expect(existsSync(stubFile(dir, 'claude'))).toBe(true);
+      expect(existsSync(stubFile(dir, 'agents'))).toBe(true);
+    });
+    await withTempDir(async (dir) => {
+      await runCli(['init'], onTerminal(dir, ['agents', '']));
+      expect(existsSync(stubFile(dir, 'agents'))).toBe(true);
+      expect(existsSync(stubFile(dir, 'claude'))).toBe(false);
+    });
+  });
+
+  it('installs nothing when no harness is detected and the human just presses Enter', async () => {
+    await withTempDir(async (dir) => {
+      // The dangerous default: Enter must not create both directories in a repo
+      // that uses neither. With nothing detected there is no default to take.
+      const env = onTerminal(dir, ['', '', '']);
+      const result = await runCli(['init'], env);
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain('init needs at least one harness');
+      expect(existsSync(join(dir, '.claude'))).toBe(false);
+      expect(existsSync(join(dir, '.agents'))).toBe(false);
+      expect(env.asked[0] ?? '').toContain('no default — this repo uses neither');
+    });
+  });
+
+  it('re-asks on an answer that names no target, then gives up', async () => {
+    await withTempDir(async (dir) => {
+      const env = onTerminal(dir, ['zed', 'emacs', 'vim']);
+      const result = await runCli(['init'], env);
+      expect(result.exitCode).not.toBe(0);
+      expect(env.asked).toHaveLength(3);
+    });
+  });
+
+  it('records the tracker the form collects alongside the stub', async () => {
+    await withTempDir(async (dir) => {
+      const result = await runCli(['init'], onTerminal(dir, ['claude', 'github cli']));
+      expect(result.exitCode).toBe(0);
+      const config: unknown = JSON.parse(
+        readFileSync(join(dir, '.wayfinder', 'config.json'), 'utf8'),
+      );
+      expect(config).toEqual({ tracker: { value: 'github cli' } });
+    });
+  });
+
+  it('never runs on a TTY when --harness is already given', async () => {
+    await withTempDir(async (dir) => {
+      const env = onTerminal(dir, ['should not be read']);
+      await runCli(['init', '--harness', 'claude'], env);
+      expect(env.asked).toEqual([]);
     });
   });
 });

@@ -1,7 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { runCli } from './fixtures/runCli.js';
 import { withTempDir } from './fixtures/tempDir.js';
-import { readVersion } from '../src/version.js';
 
 describe('the top-level surface', () => {
   it('prints the agent quickstart for bare wayfinder', async () => {
@@ -20,7 +20,18 @@ describe('the top-level surface', () => {
   });
 
   it('prints the version for --version and -V', async () => {
-    const version = readVersion();
+    // The expectation comes from package.json, the source of truth, rather than
+    // from the module under test — a test that called `readVersion` would agree
+    // with it however wrong it got.
+    const manifest: unknown = JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    );
+    const version =
+      typeof manifest === 'object' && manifest !== null && 'version' in manifest
+        ? String(manifest.version)
+        : '';
+    expect(version).not.toBe('');
+
     for (const flag of ['--version', '-V']) {
       const result = await runCli([flag]);
       expect(result.exitCode).toBe(0);

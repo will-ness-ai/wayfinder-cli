@@ -1,8 +1,9 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, relative } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { encode } from '@toon-format/toon';
-import { resolveConfig, scopeFiles, type Scope } from './config.js';
+import { isRecord, resolveConfig, scopeFiles, type Scope } from './config.js';
 import type { CliEnv, CliResult } from './env.js';
+import { initForm, trackerSetForm } from './forms.js';
 import {
   buildStub,
   HARNESS_IDS,
@@ -36,13 +37,13 @@ export async function run(argv: string[], env: CliEnv): Promise<CliResult> {
     case 'skill':
       return renderCommand(parsed.positionals[1], env);
     case 'skills':
-      return skillsCommand(parsed.flags.has('json'));
+      return skillsCommand(parsed);
     case 'tracker':
       return trackerCommand(parsed, env);
     case 'ticket-skill':
       return ticketSkillCommand(parsed, env);
     case 'doctor':
-      return doctorCommand(env);
+      return doctorCommand(parsed, env);
     case 'init':
       return initCommand(parsed, env);
     default:
@@ -65,18 +66,15 @@ function renderCommand(id: string | undefined, env: CliEnv): CliResult {
   return ok(renderSkill(entry, resolveConfig(env)));
 }
 
-function skillsCommand(asJson: boolean): CliResult {
-  const skills = registry.map(listingFor);
-  const payload = { skills };
-  const rendered = asJson ? JSON.stringify(payload, null, 2) : encode(payload);
-  return ok(`${rendered}\n`);
+function skillsCommand(parsed: ParsedArgv): CliResult {
+  return ok(structured({ skills: registry.map(listingFor) }, parsed));
 }
 
-function trackerCommand(parsed: ParsedArgv, env: CliEnv): CliResult {
+async function trackerCommand(parsed: ParsedArgv, env: CliEnv): Promise<CliResult> {
   const sub = parsed.positionals[1];
   switch (sub) {
     case 'show':
-      return trackerShow(env);
+      return trackerShow(parsed, env);
     case 'set':
       return trackerSet(parsed, env);
     default:
@@ -86,37 +84,51 @@ function trackerCommand(parsed: ParsedArgv, env: CliEnv): CliResult {
   }
 }
 
-function trackerShow(env: CliEnv): CliResult {
+/**
+ * `wayfinder tracker show` reports the effective tracker and the scope that
+ * supplied it. It is a status command, so it prints TOON by default and JSON
+ * under `--json`, the same contract as every other list and status command.
+ * An unset tracker is a state, not an error: the payload says so and exits zero.
+ */
+function trackerShow(parsed: ParsedArgv, env: CliEnv): CliResult {
   const { tracker } = resolveConfig(env);
-  if (!tracker) {
-    return ok(
-      'No tracker is configured.\n' +
-        'Set one with `wayfinder tracker set "<value>"`, for example `wayfinder tracker set "github cli"`.\n',
-    );
-  }
-  return ok(`tracker: ${tracker.value}\nscope: ${tracker.scope}\n`);
+  const payload = tracker
+    ? {
+        tracker: {
+          value: tracker.value,
+          scope: tracker.scope,
+          ...(tracker.doc !== undefined ? { doc: tracker.doc } : {}),
+        },
+      }
+    : { tracker: null };
+  return ok(structured(payload, parsed));
 }
 
 /**
  * `wayfinder tracker set [<value>] [--doc <path>] [--user]`. The value is the
- * positional words after `set`; a doc path and the user scope are flags. With no
- * value and no TTY this is a usage error — the interactive form runs in the entry
- * point before `run` is reached, so `run` stays a pure, flag-driven transform.
+ * positional words after `set`; a doc path and the user scope are flags.
+ *
+ * Dual mode resolves here, below the seam: on a TTY with no value the form fills
+ * the argv in and this same function acts on the result, so the two modes reach
+ * one code path. With no value and no TTY it is a usage error that names what to
+ * pass.
  */
-function trackerSet(parsed: ParsedArgv, env: CliEnv): CliResult {
-  const value = parsed.positionals.slice(2).join(' ').trim();
+async function trackerSet(requested: ParsedArgv, env: CliEnv): Promise<CliResult> {
+  const answered = await fillTrackerSet(requested, env);
+  const value = answered.positionals.slice(2).join(' ').trim();
+
   if (value === '') {
     return usageError(
       'tracker set needs a tracker value: name your issue tracker, lower case.\n' +
         'For example:\n\n' +
         '  wayfinder tracker set "github cli"\n\n' +
-        'Or run it on a terminal with no value to fill it in interactively.',
+        'Or run it on a terminal with no value to fill it in on a form.',
     );
   }
 
-  const scope: Scope = parsed.flags.has('user') ? 'user' : 'project';
+  const scope: Scope = answered.flags.has('user') ? 'user' : 'project';
   const file = scopeFiles(env)[scope];
-  const doc = parsed.options.doc;
+  const doc = answered.options.doc;
 
   let existing: Record<string, unknown>;
   try {
@@ -127,10 +139,24 @@ function trackerSet(parsed: ParsedArgv, env: CliEnv): CliResult {
     );
   }
   existing.tracker = { value, ...(doc ? { doc } : {}) };
-  writeConfig(file, existing);
+  writeConfig(file, existing, scope, env);
 
   const docNote = doc ? ` with doc \`${doc}\`` : '';
   return ok(`Set tracker to "${value}"${docNote} in ${scope} config (${file}).\n`);
+}
+
+/** Run the `tracker set` form when a TTY offers one and no value was passed; otherwise pass through. */
+async function fillTrackerSet(requested: ParsedArgv, env: CliEnv): Promise<ParsedArgv> {
+  const hasValue = requested.positionals.slice(2).join(' ').trim() !== '';
+  if (hasValue || !env.isTTY || !env.ask) return requested;
+  return parseArgv(
+    await trackerSetForm(
+      env.ask,
+      requested.positionals.slice(0, 2),
+      requested.flags.has('user'),
+      requested.options.doc,
+    ),
+  );
 }
 
 /**
@@ -195,7 +221,7 @@ function ticketSkillWrite(parsed: ParsedArgv, env: CliEnv, mode: 'add' | 'edit')
 
   skills[name] = { when };
   existing.ticketSkills = skills;
-  writeConfig(file, existing);
+  writeConfig(file, existing, scope, env);
   const verb = mode === 'add' ? 'Registered' : 'Updated';
   return ok(`${verb} ticket skill "${name}" in ${scope} config.\n`);
 }
@@ -230,16 +256,14 @@ function ticketSkillRemove(parsed: ParsedArgv, env: CliEnv): CliResult {
     report = `Hid inherited ticket skill "${name}" in ${scope} config with a tombstone.`;
   }
   existing.ticketSkills = skills;
-  writeConfig(file, existing);
+  writeConfig(file, existing, scope, env);
   return ok(`${report}\n`);
 }
 
 /** `list` shows each effective registration with its scope: TOON by default, JSON under `--json`. */
 function ticketSkillList(parsed: ParsedArgv, env: CliEnv): CliResult {
   const { ticketSkills } = resolveConfig(env);
-  const payload = { ticketSkills };
-  const rendered = parsed.flags.has('json') ? JSON.stringify(payload, null, 2) : encode(payload);
-  return ok(`${rendered}\n`);
+  return ok(structured({ ticketSkills }, parsed));
 }
 
 /**
@@ -248,33 +272,67 @@ function ticketSkillList(parsed: ParsedArgv, env: CliEnv): CliResult {
  * in project scope and user scope — and a tracker doc path that no longer resolves.
  * A clean run exits zero; any finding exits non-zero, so the check gates in CI.
  */
-function doctorCommand(env: CliEnv): CliResult {
+function doctorCommand(parsed: ParsedArgv, env: CliEnv): CliResult {
   const config = resolveConfig(env);
-  const problems: string[] = [];
+  const problems: DoctorProblem[] = [];
 
   for (const skill of config.ticketSkills) {
     if (!harnessSkillInstalled(env, skill.name)) {
-      problems.push(
-        `Ticket skill "${skill.name}" (${skill.scope} scope) resolves to no installed harness skill. ` +
+      problems.push({
+        kind: 'ticket-skill',
+        subject: skill.name,
+        detail:
+          `Ticket skill "${skill.name}" (${skill.scope} scope) resolves to no installed harness skill. ` +
           `Install it in a harness, or remove it with \`wayfinder ticket-skill remove ${skill.name}\`.`,
-      );
+      });
     }
   }
-  const docProblem = trackerDocProblem(config);
-  if (docProblem) problems.push(docProblem);
 
-  if (problems.length === 0) return ok('doctor: no problems found.\n');
-  const body = ['doctor found problems:', '', ...problems.map((line) => `- ${line}`)].join('\n');
-  return { stdout: `${body}\n`, stderr: '', exitCode: 1 };
+  const docProblem = trackerDocProblem(config);
+  if (docProblem && config.tracker?.doc !== undefined) {
+    problems.push({ kind: 'tracker-doc', subject: config.tracker.doc, detail: docProblem });
+  }
+
+  const rendered = structured({ problems }, parsed);
+  return { stdout: rendered, stderr: '', exitCode: problems.length === 0 ? 0 : 1 };
 }
 
-/** The stored `ticketSkills` map, as a writable object: a missing or non-object key starts empty. */
+/** One `doctor` finding: what kind of thing is broken, which one, and what to do. */
+interface DoctorProblem {
+  kind: 'ticket-skill' | 'tracker-doc';
+  subject: string;
+  detail: string;
+}
+
+/**
+ * Render a status or list payload: TOON by default, JSON under `--json`. Every
+ * command that reports state shares it, so no surface can drift into ad-hoc prose
+ * that a caller cannot parse.
+ */
+function structured(payload: object, parsed: ParsedArgv): string {
+  const rendered = parsed.flags.has('json') ? JSON.stringify(payload, null, 2) : encode(payload);
+  return `${rendered}\n`;
+}
+
+/**
+ * The stored `ticketSkills` map, as a writable object. A missing or non-object
+ * key starts empty, and every stored entry is checked rather than asserted: an
+ * entry of the wrong shape is dropped, so a rewrite never carries a malformed
+ * registration back to disk under a type that claims it is sound.
+ */
 function ticketSkillsFor(existing: Record<string, unknown>): Record<string, { when: string } | null> {
   const raw = existing.ticketSkills;
-  if (raw && typeof raw === 'object') {
-    return raw as Record<string, { when: string } | null>;
+  if (!isRecord(raw)) return {};
+
+  const skills: Record<string, { when: string } | null> = {};
+  for (const [name, entry] of Object.entries(raw)) {
+    if (entry === null) {
+      skills[name] = null;
+    } else if (isRecord(entry) && typeof entry.when === 'string') {
+      skills[name] = { when: entry.when };
+    }
   }
-  return {};
+  return skills;
 }
 
 /** Resolve the `--scope` flag to a scope, defaulting to project, or a named usage error. */
@@ -308,11 +366,12 @@ const WHEN_USAGE =
  * stub: `tracker set` and every registration mutation leave it alone. A second
  * run repairs a damaged stub and reports a diff of what it changed.
  *
- * The interactive form runs at the process boundary on a TTY and folds its
- * answers back into `--harness`, so `run` stays a pure, flag-driven transform.
- * With no `--harness` and no TTY this is a usage error that names the flag.
+ * Dual mode resolves here, below the seam: on a TTY with no `--harness` the
+ * multi-select fills the argv in and this same function acts on the result. With
+ * no `--harness` and no TTY it is a usage error that names the flag.
  */
-function initCommand(parsed: ParsedArgv, env: CliEnv): CliResult {
+async function initCommand(requested: ParsedArgv, env: CliEnv): Promise<CliResult> {
+  const parsed = await fillInit(requested, env);
   const harnesses = parseHarnesses(parsed.options.harness);
   if (harnesses instanceof Error) return usageError(harnesses.message);
 
@@ -330,6 +389,12 @@ function initCommand(parsed: ParsedArgv, env: CliEnv): CliResult {
   }
   reports.push('Next: have your agent run `wayfinder skill wayfinder`.');
   return ok(`${reports.join('\n')}\n`);
+}
+
+/** Run the `init` multi-select when a TTY offers one and no `--harness` was passed; otherwise pass through. */
+async function fillInit(requested: ParsedArgv, env: CliEnv): Promise<ParsedArgv> {
+  if (requested.options.harness !== undefined || !env.isTTY || !env.ask) return requested;
+  return parseArgv(await initForm(env.ask, env, ['init'], requested.options.tracker));
 }
 
 /**
@@ -363,7 +428,7 @@ const HARNESS_USAGE =
   '                 Valid ids: claude (.claude/skills/), agents (.agents/skills/).\n\n' +
   'For example:\n\n' +
   '  wayfinder init --harness claude,agents\n\n' +
-  'Or run it on a terminal with no flags to pick the harnesses interactively.';
+  'Or run it on a terminal with no flags to pick the harnesses from a form.';
 
 /**
  * Write the stub to one harness, and report what happened. A first write reports
@@ -414,12 +479,9 @@ function writeInitTracker(raw: string, env: CliEnv): string | Error {
   // Store the value only, but preserve a doc a prior `tracker set --doc` attached:
   // recording the tracker here must never silently drop the developer's doc path.
   const prior = existing.tracker;
-  const doc =
-    prior && typeof prior === 'object' && typeof (prior as { doc?: unknown }).doc === 'string'
-      ? (prior as { doc: string }).doc
-      : undefined;
+  const doc = isRecord(prior) && typeof prior.doc === 'string' ? prior.doc : undefined;
   existing.tracker = doc ? { value, doc } : { value };
-  writeConfig(file, existing);
+  writeConfig(file, existing, 'project', env);
   return `Set tracker to "${value}" in project config (${relative(env.cwd, file)}).`;
 }
 
@@ -437,13 +499,47 @@ function readConfigForWrite(file: string): Record<string, unknown> {
   } catch {
     return {};
   }
-  return JSON.parse(raw) as Record<string, unknown>;
+  const parsed: unknown = JSON.parse(raw);
+  if (!isRecord(parsed)) {
+    throw new Error('A config file must hold a JSON object.');
+  }
+  return parsed;
 }
 
-/** Write a config back as pretty JSON, creating its directory on the first write. */
-function writeConfig(file: string, config: Record<string, unknown>): void {
+/**
+ * Write a config back as pretty JSON, creating its directory on the first write.
+ * Writing the local scope also plants the ignore rule beside it: local config is
+ * one developer's override and must never reach a commit, so the CLI that
+ * creates the file is what keeps it out of git.
+ */
+function writeConfig(
+  file: string,
+  config: Record<string, unknown>,
+  scope: Scope,
+  env: CliEnv,
+): void {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  if (scope === 'local') ignoreLocalConfig(env);
+}
+
+/** The name of the local-scope config file, as its sibling ignore rule spells it. */
+const LOCAL_CONFIG_IGNORE = 'local.json';
+
+/**
+ * Keep `.wayfinder/local.json` out of git with an ignore file beside it, rather
+ * than by editing the repo's root `.gitignore` — a file the CLI does not own and
+ * a developer may have arranged deliberately. An existing rule is left alone.
+ */
+function ignoreLocalConfig(env: CliEnv): void {
+  const ignoreFile = join(dirname(scopeFiles(env).local), '.gitignore');
+  let existing = '';
+  if (existsSync(ignoreFile)) {
+    existing = readFileSync(ignoreFile, 'utf8');
+    if (existing.split('\n').some((line) => line.trim() === LOCAL_CONFIG_IGNORE)) return;
+  }
+  const separator = existing === '' || existing.endsWith('\n') ? '' : '\n';
+  writeFileSync(ignoreFile, `${existing}${separator}${LOCAL_CONFIG_IGNORE}\n`, 'utf8');
 }
 
 type Flag = 'help' | 'version' | 'json' | 'user';

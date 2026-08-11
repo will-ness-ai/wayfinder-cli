@@ -13,7 +13,17 @@ export interface CliEnv {
   isTTY: boolean;
   /** The process environment variables. */
   env: Record<string, string | undefined>;
+  /**
+   * Ask the human one question and read one line back. The real entry point backs
+   * this with readline; a test backs it with a scripted answer list, which is how
+   * the TTY half of dual mode is driven through the seam. A missing `ask` means no
+   * form can run, so a TTY with none behaves like a pipe.
+   */
+  ask?: Ask;
 }
+
+/** One question to the human, one line back, already trimmed. */
+export type Ask = (question: string) => Promise<string>;
 
 /** The observable result of a CLI invocation: the bytes written and the exit code. */
 export interface CliResult {

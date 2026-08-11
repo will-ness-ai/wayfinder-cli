@@ -7,9 +7,9 @@ import type { ResolvedConfig, ResolvedTracker } from './config.js';
 
 /**
  * The tracker block: the operations prose for this repo's tracker, in whichever
- * of its three states applies. `wayfinder skill tracker` prints it alone today;
- * the wayfinder render will append the same block at its bottom (issue #39). One
- * function serves both, so the two paths can never disagree.
+ * of its three states applies. `wayfinder skill tracker` prints it alone, and the
+ * wayfinder render appends the same block at its bottom. One function serves
+ * both, so the two paths can never disagree.
  *
  * - No tracker value → the **notice-and-ask block**: report the gap, ask the
  *   human to choose, and never guess.
