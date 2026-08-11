@@ -1,7 +1,7 @@
 import { readContent } from './content.js';
 import { parseSource } from './frontmatter.js';
 import { demoteHeadings } from './markdown.js';
-import { findSkill, type SkillEntry } from './registry.js';
+import { findSkill, registry, type SkillEntry } from './registry.js';
 import type { ResolvedConfig } from './config.js';
 import { renderTrackerBlock, trackerPointerLine } from './tracker.js';
 
@@ -12,6 +12,13 @@ import { renderTrackerBlock, trackerPointerLine } from './tracker.js';
  */
 const TRACKER_LINE_ANCHOR =
   'The issue tracker and its label vocabulary should have been provided to you.';
+
+/**
+ * The marker in the wayfinder source that the skill-planning list composes in at:
+ * the core planning entries built from the registry, followed by the config-driven
+ * **Ticket skills** block. The source keeps the static prose around it.
+ */
+const SKILL_PLANNING_ANCHOR = '<!-- wayfinder:skill-planning -->';
 
 /**
  * Render one skill to the markdown a `wayfinder skill <id>` call prints.
@@ -59,10 +66,47 @@ function ownBody(entry: SkillEntry, config: ResolvedConfig): string {
   if (entry.trackerPointer) {
     body = substitute(body, TRACKER_LINE_ANCHOR, trackerPointerLine(config), entry.id);
   }
+  if (entry.skillPlanning) {
+    body = substitute(body, SKILL_PLANNING_ANCHOR, skillPlanningBlock(config), entry.id);
+  }
   for (const { marker, dependency } of entry.anchoredInlines ?? []) {
     body = substitute(body, marker, inlineBody(dependency), entry.id);
   }
   return body;
+}
+
+/**
+ * The skill-planning list the wayfinder render composes in at its marker. The
+ * core planning entries render from the registry, in registry order, so the list
+ * and the served set never drift. The **Ticket skills** block closes it, one row
+ * per effective registration; with none registered it names how to add one, and
+ * always carries the charting instruction so the assignment convention is fixed.
+ */
+function skillPlanningBlock(config: ResolvedConfig): string {
+  const coreRows = registry
+    .filter((entry) => entry.planning !== undefined)
+    .map((entry) => `- \`wayfinder skill ${entry.id}\` — ${entry.planning}`);
+
+  const lines = [
+    ...coreRows,
+    '',
+    '### Ticket skills',
+    '',
+    'Assign a registered ticket skill to a ticket by writing a ticket-carried pointer that names the harness skill — for example "At session start, invoke the pre-mortem skill and apply it." Each carries the condition that makes it relevant.',
+    '',
+  ];
+
+  if (config.ticketSkills.length === 0) {
+    lines.push(
+      'No ticket skills are registered. A developer adds one with `wayfinder ticket-skill add <name> --when "<sentence>"`.',
+    );
+  } else {
+    for (const skill of config.ticketSkills) {
+      lines.push(`- **${skill.name}** — when ${skill.when}`);
+    }
+  }
+
+  return lines.join('\n');
 }
 
 /**

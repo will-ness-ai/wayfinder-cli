@@ -78,3 +78,58 @@ describe('the wayfinder render', () => {
     });
   });
 });
+
+describe('the wayfinder skill-planning section', () => {
+  it('replaces Ticket Types, rendering the core entries from the registry', async () => {
+    await withTempDir(async (dir) => {
+      const { stdout } = await renderWayfinder(dir);
+      expect(stdout).toContain('## Skill planning');
+      expect(stdout).not.toContain('## Ticket Types');
+      // Core entries, in registry order: grill-with-docs (default), research, prototype.
+      expect(stdout).toContain(
+        '- `wayfinder skill grill-with-docs` — the default decision conversation',
+      );
+      expect(stdout).toContain('- `wayfinder skill research` — when a fact outside');
+      expect(stdout).toContain('- `wayfinder skill prototype` — when the open question');
+      const order = ['grill-with-docs', 'research', 'prototype'].map((id) =>
+        stdout.indexOf(`wayfinder skill ${id}`),
+      );
+      expect(order).toEqual([...order].sort((a, b) => a - b));
+    });
+  });
+
+  it('states the one-rule readiness mapping with the literal label strings', async () => {
+    await withTempDir(async (dir) => {
+      const { stdout } = await renderWayfinder(dir);
+      expect(stdout).toContain('`ready-for-agent`');
+      expect(stdout).toContain('`ready-for-human`');
+    });
+  });
+
+  it('names how to register when no ticket skills are configured', async () => {
+    await withTempDir(async (dir) => {
+      const { stdout } = await renderWayfinder(dir);
+      expect(stdout).toContain('### Ticket skills');
+      expect(stdout).toContain('No ticket skills are registered');
+    });
+  });
+
+  it('renders one row per effective registration, each with its when sentence', async () => {
+    await withTempDir(async (dir) => {
+      writeProjectConfig(dir, {
+        ticketSkills: {
+          'pre-mortem': { when: 'the ticket carries deploy or migration risk' },
+          'frontend-loop': { when: 'the ticket changes the UI' },
+        },
+      });
+      const result = await renderWayfinder(dir);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain(
+        '- **pre-mortem** — when the ticket carries deploy or migration risk',
+      );
+      expect(result.stdout).toContain('- **frontend-loop** — when the ticket changes the UI');
+      expect(result.stdout).not.toContain('No ticket skills are registered');
+      expect(result.stdout).toMatchSnapshot();
+    });
+  });
+});

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { contentRoot } from './content.js';
 import { parseSource } from './frontmatter.js';
@@ -57,6 +57,19 @@ function resolveDoc(tracker: ResolvedTracker): string | undefined {
 /** Lower-case the tracker value and replace each run of whitespace with `-`. No aliases. */
 export function trackerSlug(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+/**
+ * The `doctor` check for an attached tracker doc: a `--doc` path that no longer
+ * resolves to a file. It degrades to the no-doc state at render, silently by
+ * design, so `doctor` is the one surface that reports the broken path. Returns
+ * `undefined` when no doc is attached or the attached doc resolves.
+ */
+export function trackerDocProblem(config: ResolvedConfig): string | undefined {
+  const tracker = config.tracker;
+  if (tracker?.doc === undefined) return undefined;
+  if (existsSync(join(tracker.configDir, tracker.doc))) return undefined;
+  return `Tracker doc "${tracker.doc}" (${tracker.scope} scope) does not resolve to a file. Fix the path with \`wayfinder tracker set --doc <path>\`, or clear it.`;
 }
 
 function readIfPresent(path: string): string | undefined {

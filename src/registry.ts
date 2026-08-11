@@ -56,6 +56,18 @@ export interface SkillEntry {
    * every render ends with this repo's tracker operations.
    */
   trackerBlock?: boolean;
+  /**
+   * When set, the skill-planning list composes in at the host's marker: the core
+   * planning entries (every entry with a {@link planning} condition) followed by
+   * the config-driven **Ticket skills** block. Only the wayfinder host carries it.
+   */
+  skillPlanning?: boolean;
+  /**
+   * The firing condition this entry shows in the wayfinder render's skill-planning
+   * list. Set on the core planning entries — `grill-with-docs`, `research`,
+   * `prototype` — so the list renders from the registry, in registry order.
+   */
+  planning?: string;
 }
 
 /**
@@ -81,6 +93,7 @@ export const registry: SkillEntry[] = [
     origin: 'core',
     anchoredInlines: [{ marker: '<!-- wayfinder:inline grilling -->', dependency: 'grilling' }],
     trackerBlock: true,
+    skillPlanning: true,
   },
   { id: 'grilling', source: 'skills/grilling/SKILL.md', inlines: [], children: [], origin: 'core' },
   {
@@ -96,14 +109,25 @@ export const registry: SkillEntry[] = [
     inlines: ['grilling', 'domain-modeling'],
     children: ['domain-modeling/adr-format', 'domain-modeling/context-format'],
     origin: 'core',
+    planning: 'the default decision conversation; reach for it whenever a decision needs talking through.',
   },
-  { id: 'research', source: 'skills/research/SKILL.md', inlines: [], children: [], origin: 'core' },
+  {
+    id: 'research',
+    source: 'skills/research/SKILL.md',
+    inlines: [],
+    children: [],
+    origin: 'core',
+    planning:
+      'when a fact outside the working directory has to be found before a decision can be made.',
+  },
   {
     id: 'prototype',
     source: 'skills/prototype/SKILL.md',
     inlines: [],
     children: ['prototype/logic', 'prototype/ui'],
     origin: 'core',
+    planning:
+      'when the open question is how something should look or behave, and a rough artifact would sharpen it.',
   },
   {
     id: 'to-spec',

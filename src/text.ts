@@ -36,6 +36,11 @@ SETUP
   wayfinder tracker set [<value>]      Record this repo's issue tracker. Runs a form on a
     [--doc <path>] [--user]            terminal; takes flags with no TTY. --doc attaches an
                                        operations doc by path; --user writes the user scope.
+  wayfinder ticket-skill add <name>    Register a harness skill for charting to assign to
+    --when "<sentence>" [--scope ...]  tickets. --when is required; --scope is local, project
+                                       (default), or user. edit, remove, and list round it out.
+  wayfinder doctor                     Report registered ticket skills that resolve to no
+                                       installed harness skill, and an unresolvable tracker doc.
 
 OPTIONS
   --json                   Emit machine-readable JSON instead of TOON (list commands).

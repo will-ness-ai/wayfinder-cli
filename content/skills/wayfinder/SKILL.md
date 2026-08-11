@@ -62,7 +62,7 @@ Each ticket is a **child issue** of the map; the tracker's issue id is its ident
 <the decision or investigation this ticket resolves>
 ```
 
-Each ticket carries a `wayfinder:<type>` label — one of `research`, `prototype`, `grilling`, `task` (see [Ticket Types](#ticket-types)).
+Each ticket carries a `wayfinder:<type>` label — one of `grilling`, `research`, `prototype`, `task` (see [Skill planning](#skill-planning)).
 
 A session **claims** a ticket by assigning it to the dev driving the map, **first**, before any work, so concurrent sessions skip it. That assignee _is_ the claim: an open, unassigned ticket is unclaimed.
 
@@ -70,14 +70,22 @@ Blocking uses the tracker's **native** dependency relationship — essential bec
 
 The answer isn't part of the body — it's recorded on resolution (see [Work through the map](#work-through-the-map)). Assets created while resolving a ticket are linked from the issue, not pasted in.
 
-## Ticket Types
+## Skill planning
 
-Every ticket is either **HITL** — human in the loop, worked *with* a human who speaks for themselves — or **AFK**, driven by the agent alone. A HITL ticket only resolves through that live exchange; the agent never stands in for the human's side of it (a grilling agent that answers its own questions has broken this).
+The `wayfinder:<type>` label is a closed set of four, and it names the **shape** of the work, not the skills that resolve it:
 
-- **Research** (AFK): Reading documentation, third-party APIs, or local resources like knowledge bases to surface a fact a decision waits on. Worked by a full session with the `/research` skill, like any other frontier ticket. Use when knowledge outside the current working directory is required.
-- **Prototype** (HITL): Raise the fidelity of the discussion by making a cheap, rough, concrete artifact to react to — an outline, a rough take, a stub, or UI/logic code via the /prototype skill. Links the prototype as an asset. Use when "how should it look" or "how should it behave" is the key question.
-- **Grilling** (HITL): The decision conversation — run `wayfinder skill grill-with-docs`, one question at a time. The default case.
-- **Task** (HITL or AFK): Manual work that must happen before a *decision* can be made — nothing to decide, prototype, or research, but the discussion is blocked until it's done. Signing up for a service so its API can be judged, provisioning access, moving data so its shape can be seen. This is the one type that *does* rather than decides — and it earns its place by unblocking a decision, not by delivering the destination. The agent drives it alone where it can (AFK); otherwise it hands the human a precise checklist (HITL). Resolved when the work is done; the answer records what was done and any resulting facts (credentials location, new URLs, row counts) later tickets depend on.
+- **grilling** — a decision conversation.
+- **research** — a fact outside the working directory that a decision waits on.
+- **prototype** — a cheap, rough artifact to react to when "how should it look" or "how should it behave" is the question.
+- **task** — manual work that must happen before a decision can be made. The one type that *does* rather than decides; it earns its place by unblocking a decision, never by delivering the destination. Its answer records what was done and any facts later tickets depend on.
+
+The type is **orthogonal** to the ticket's skills: any type can carry any skill from the list below. Plan a ticket's skills separately from its type, and record each as a ticket-carried pointer in the ticket body, so the session that claims it loads the skill.
+
+Readiness is **one rule**: a ticket that needs zero human input is AFK — label it `ready-for-agent`; a ticket that needs human oversight is HITL — label it `ready-for-human`. A HITL ticket resolves only through a live exchange, and the agent never stands in for the human's side of it (a grilling agent that answers its own questions has broken this).
+
+Plan each ticket's skills from this list:
+
+<!-- wayfinder:skill-planning -->
 
 ## Fog of war
 

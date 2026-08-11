@@ -40,6 +40,22 @@ export function detectHarnesses(env: CliEnv): HarnessId[] {
 }
 
 /**
+ * Whether a harness skill of this name is installed anywhere `doctor` looks: the
+ * `claude` and `agents` targets, in project scope (under the working directory)
+ * and user scope (under the home directory). A skill is a directory carrying a
+ * `SKILL.md`, so that file's presence is the installed signal.
+ */
+export function harnessSkillInstalled(env: CliEnv, name: string): boolean {
+  const roots = [env.cwd, env.home];
+  for (const root of roots) {
+    for (const id of HARNESS_IDS) {
+      if (existsSync(join(root, HARNESS_BASE[id], 'skills', name, 'SKILL.md'))) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Build the one stub skill `init` installs into a harness.
  *
  * The stub is agent-optimized: a hardened start line that leaves one legal next

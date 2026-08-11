@@ -6,6 +6,7 @@ import type { CliEnv, CliResult } from './env.js';
 import {
   buildStub,
   HARNESS_IDS,
+  harnessSkillInstalled,
   isHarnessId,
   lineDiff,
   stubPath,
@@ -13,6 +14,7 @@ import {
 } from './init.js';
 import { findSkill, registry } from './registry.js';
 import { listingFor, renderSkill } from './render.js';
+import { trackerDocProblem } from './tracker.js';
 import { readVersion } from './version.js';
 import { help, quickstart } from './text.js';
 
@@ -37,6 +39,10 @@ export async function run(argv: string[], env: CliEnv): Promise<CliResult> {
       return skillsCommand(parsed.flags.has('json'));
     case 'tracker':
       return trackerCommand(parsed, env);
+    case 'ticket-skill':
+      return ticketSkillCommand(parsed, env);
+    case 'doctor':
+      return doctorCommand(env);
     case 'init':
       return initCommand(parsed, env);
     default:
@@ -126,6 +132,174 @@ function trackerSet(parsed: ParsedArgv, env: CliEnv): CliResult {
   const docNote = doc ? ` with doc \`${doc}\`` : '';
   return ok(`Set tracker to "${value}"${docNote} in ${scope} config (${file}).\n`);
 }
+
+/**
+ * `wayfinder ticket-skill <add|edit|remove|list>`. A ticket skill is a harness
+ * skill charting assigns to each ticket its when sentence makes relevant; the CLI
+ * only points at it, and the harness serves and invokes it. The registration
+ * schema carries three fields and no more: name, when sentence, and scope.
+ */
+function ticketSkillCommand(parsed: ParsedArgv, env: CliEnv): CliResult {
+  switch (parsed.positionals[1]) {
+    case 'add':
+      return ticketSkillWrite(parsed, env, 'add');
+    case 'edit':
+      return ticketSkillWrite(parsed, env, 'edit');
+    case 'remove':
+      return ticketSkillRemove(parsed, env);
+    case 'list':
+      return ticketSkillList(parsed, env);
+    default:
+      return usageError(
+        'Usage: wayfinder ticket-skill <add|edit|remove|list>. Run `wayfinder --help` for the setup page.',
+      );
+  }
+}
+
+/**
+ * `add` and `edit` share one writer: both register `{ when }` under the name in
+ * the chosen scope, differing only in the guard. `add` refuses a name already
+ * registered in that scope, so it never silently overwrites; `edit` refuses a
+ * name not yet registered there, so it never registers by surprise. A tombstone
+ * counts as unregistered, so `add` may re-register over a hidden inheritance.
+ */
+function ticketSkillWrite(parsed: ParsedArgv, env: CliEnv, mode: 'add' | 'edit'): CliResult {
+  const name = parsed.positionals[2]?.trim();
+  if (!name) return usageError(TICKET_SKILL_NAME_USAGE);
+  const when = parsed.options.when?.trim();
+  if (!when) return usageError(WHEN_USAGE);
+  const scope = parseScope(parsed.options.scope);
+  if (scope instanceof Error) return usageError(scope.message);
+
+  const file = scopeFiles(env)[scope];
+  let existing: Record<string, unknown>;
+  try {
+    existing = readConfigForWrite(file);
+  } catch {
+    return usageError(malformedConfig(scope, file));
+  }
+  const skills = ticketSkillsFor(existing);
+
+  if (mode === 'add' && skills[name] != null) {
+    return usageError(
+      `Ticket skill "${name}" is already registered in ${scope} config. ` +
+        `Change its when sentence with \`wayfinder ticket-skill edit ${name} --when "..."\`.`,
+    );
+  }
+  if (mode === 'edit' && skills[name] == null) {
+    return usageError(
+      `No ticket skill "${name}" is registered in ${scope} config. ` +
+        `Register it with \`wayfinder ticket-skill add ${name} --when "..."\`.`,
+    );
+  }
+
+  skills[name] = { when };
+  existing.ticketSkills = skills;
+  writeConfig(file, existing);
+  const verb = mode === 'add' ? 'Registered' : 'Updated';
+  return ok(`${verb} ticket skill "${name}" in ${scope} config.\n`);
+}
+
+/**
+ * `remove` unregisters a name at one scope. A name registered directly in that
+ * scope is deleted; a name only inherited from a broader scope is hidden with a
+ * `null` tombstone, so the one command covers both the local cleanup and the
+ * inherited-registration hide the union resolution reads.
+ */
+function ticketSkillRemove(parsed: ParsedArgv, env: CliEnv): CliResult {
+  const name = parsed.positionals[2]?.trim();
+  if (!name) return usageError(TICKET_SKILL_NAME_USAGE);
+  const scope = parseScope(parsed.options.scope);
+  if (scope instanceof Error) return usageError(scope.message);
+
+  const file = scopeFiles(env)[scope];
+  let existing: Record<string, unknown>;
+  try {
+    existing = readConfigForWrite(file);
+  } catch {
+    return usageError(malformedConfig(scope, file));
+  }
+  const skills = ticketSkillsFor(existing);
+
+  let report: string;
+  if (skills[name] != null) {
+    delete skills[name];
+    report = `Removed ticket skill "${name}" from ${scope} config.`;
+  } else {
+    skills[name] = null;
+    report = `Hid inherited ticket skill "${name}" in ${scope} config with a tombstone.`;
+  }
+  existing.ticketSkills = skills;
+  writeConfig(file, existing);
+  return ok(`${report}\n`);
+}
+
+/** `list` shows each effective registration with its scope: TOON by default, JSON under `--json`. */
+function ticketSkillList(parsed: ParsedArgv, env: CliEnv): CliResult {
+  const { ticketSkills } = resolveConfig(env);
+  const payload = { ticketSkills };
+  const rendered = parsed.flags.has('json') ? JSON.stringify(payload, null, 2) : encode(payload);
+  return ok(`${rendered}\n`);
+}
+
+/**
+ * `wayfinder doctor`. It reports each registered ticket-skill name that resolves
+ * to no installed harness skill — checked across the `claude` and `agents` targets
+ * in project scope and user scope — and a tracker doc path that no longer resolves.
+ * A clean run exits zero; any finding exits non-zero, so the check gates in CI.
+ */
+function doctorCommand(env: CliEnv): CliResult {
+  const config = resolveConfig(env);
+  const problems: string[] = [];
+
+  for (const skill of config.ticketSkills) {
+    if (!harnessSkillInstalled(env, skill.name)) {
+      problems.push(
+        `Ticket skill "${skill.name}" (${skill.scope} scope) resolves to no installed harness skill. ` +
+          `Install it in a harness, or remove it with \`wayfinder ticket-skill remove ${skill.name}\`.`,
+      );
+    }
+  }
+  const docProblem = trackerDocProblem(config);
+  if (docProblem) problems.push(docProblem);
+
+  if (problems.length === 0) return ok('doctor: no problems found.\n');
+  const body = ['doctor found problems:', '', ...problems.map((line) => `- ${line}`)].join('\n');
+  return { stdout: `${body}\n`, stderr: '', exitCode: 1 };
+}
+
+/** The stored `ticketSkills` map, as a writable object: a missing or non-object key starts empty. */
+function ticketSkillsFor(existing: Record<string, unknown>): Record<string, { when: string } | null> {
+  const raw = existing.ticketSkills;
+  if (raw && typeof raw === 'object') {
+    return raw as Record<string, { when: string } | null>;
+  }
+  return {};
+}
+
+/** Resolve the `--scope` flag to a scope, defaulting to project, or a named usage error. */
+function parseScope(raw: string | undefined): Scope | Error {
+  if (raw === undefined) return 'project';
+  if (raw === 'local' || raw === 'project' || raw === 'user') return raw;
+  return new Error(
+    `Unknown scope "${raw}". Use one of local, project, user.\n\n` +
+      '  wayfinder ticket-skill add pre-mortem --when "..." --scope project',
+  );
+}
+
+function malformedConfig(scope: Scope, file: string): string {
+  return `The ${scope} config at ${file} is not valid JSON. Fix it before registering a ticket skill.`;
+}
+
+const TICKET_SKILL_NAME_USAGE =
+  'ticket-skill needs a skill name: the harness skill to register.\n\n' +
+  '  wayfinder ticket-skill add pre-mortem --when "the ticket carries deploy or migration risk"';
+
+const WHEN_USAGE =
+  'ticket-skill needs a when sentence: the condition that makes the skill relevant to a ticket.\n' +
+  '--when "<sentence>"  Required. The relevance condition charting reads to assign the skill.\n\n' +
+  'For example:\n\n' +
+  '  wayfinder ticket-skill add pre-mortem --when "the ticket carries deploy or migration risk"';
 
 /**
  * `wayfinder init [--harness <ids>] [--tracker <value>]`. It writes exactly one
@@ -276,7 +450,7 @@ type Flag = 'help' | 'version' | 'json' | 'user';
 
 export interface ParsedArgv {
   flags: Set<Flag>;
-  options: { doc?: string; harness?: string; tracker?: string };
+  options: { doc?: string; harness?: string; tracker?: string; when?: string; scope?: string };
   positionals: string[];
 }
 
@@ -319,6 +493,14 @@ export function parseArgv(argv: string[]): ParsedArgv {
       case '--tracker':
         i += 1;
         if (argv[i] !== undefined) options.tracker = argv[i];
+        break;
+      case '--when':
+        i += 1;
+        if (argv[i] !== undefined) options.when = argv[i];
+        break;
+      case '--scope':
+        i += 1;
+        if (argv[i] !== undefined) options.scope = argv[i];
         break;
       default:
         if (arg !== undefined) positionals.push(arg);
