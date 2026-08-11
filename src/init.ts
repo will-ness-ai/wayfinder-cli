@@ -11,10 +11,15 @@ export type HarnessId = 'claude' | 'agents';
 /** Every install target, in offer order. */
 export const HARNESS_IDS: HarnessId[] = ['claude', 'agents'];
 
-/** Each harness's base directory and skills directory, relative to the working directory. */
-const HARNESS: Record<HarnessId, { base: string; skills: string }> = {
-  claude: { base: '.claude', skills: join('.claude', 'skills') },
-  agents: { base: '.agents', skills: join('.agents', 'skills') },
+/** Whether an arbitrary string is one of the known install targets. */
+export function isHarnessId(id: string): id is HarnessId {
+  return (HARNESS_IDS as readonly string[]).includes(id);
+}
+
+/** Each harness's base directory, relative to the working directory; skills live under `<base>/skills`. */
+const HARNESS_BASE: Record<HarnessId, string> = {
+  claude: '.claude',
+  agents: '.agents',
 };
 
 /** The one stub is a skill named `wayfinder`; a harness serves it from this leaf. */
@@ -26,12 +31,12 @@ const INDEX_END = '<!-- wayfinder:index:end -->';
 
 /** The absolute path of the single stub file for one harness under the working directory. */
 export function stubPath(env: CliEnv, harness: HarnessId): string {
-  return join(env.cwd, HARNESS[harness].skills, STUB_SKILL, 'SKILL.md');
+  return join(env.cwd, HARNESS_BASE[harness], 'skills', STUB_SKILL, 'SKILL.md');
 }
 
 /** A harness is detected when its base directory already exists in the repo. */
 export function detectHarnesses(env: CliEnv): HarnessId[] {
-  return HARNESS_IDS.filter((id) => existsSync(join(env.cwd, HARNESS[id].base)));
+  return HARNESS_IDS.filter((id) => existsSync(join(env.cwd, HARNESS_BASE[id])));
 }
 
 /**

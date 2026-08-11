@@ -19,10 +19,11 @@ if (result.stderr) process.stderr.write(result.stderr);
 process.exitCode = result.exitCode;
 
 /**
- * The process boundary owns the one interactive path. On a TTY, `tracker set`
- * with no value runs a terminal form and folds the answers back into argv, so
- * {@link run} still sees a complete, flag-driven command and stays pure. Every
- * other invocation, and every non-TTY run, passes straight through.
+ * The process boundary owns the interactive paths. On a TTY, `tracker set` with
+ * no value and `init` with no `--harness` each run a terminal form and fold the
+ * answers back into argv, so {@link run} still sees a complete, flag-driven
+ * command and stays pure. Every other invocation, and every non-TTY run, passes
+ * straight through.
  */
 async function withInteractiveForm(rawArgv: string[], cliEnv: CliEnv): Promise<string[]> {
   if (!cliEnv.isTTY) return rawArgv;

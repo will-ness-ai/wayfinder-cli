@@ -6,6 +6,7 @@ import type { CliEnv, CliResult } from './env.js';
 import {
   buildStub,
   HARNESS_IDS,
+  isHarnessId,
   lineDiff,
   stubPath,
   type HarnessId,
@@ -120,8 +121,7 @@ function trackerSet(parsed: ParsedArgv, env: CliEnv): CliResult {
     );
   }
   existing.tracker = { value, ...(doc ? { doc } : {}) };
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(existing, null, 2)}\n`, 'utf8');
+  writeConfig(file, existing);
 
   const docNote = doc ? ` with doc \`${doc}\`` : '';
   return ok(`Set tracker to "${value}"${docNote} in ${scope} config (${file}).\n`);
@@ -172,14 +172,13 @@ function parseHarnesses(flag: string | undefined): HarnessId[] | Error {
 
   const chosen: HarnessId[] = [];
   for (const id of ids) {
-    if (!(HARNESS_IDS as string[]).includes(id)) {
+    if (!isHarnessId(id)) {
       return new Error(
         `Unknown harness "${id}". Valid install targets are ${HARNESS_IDS.join(', ')}.\n\n` +
           '  wayfinder init --harness claude,agents',
       );
     }
-    const harness = id as HarnessId;
-    if (!chosen.includes(harness)) chosen.push(harness);
+    if (!chosen.includes(id)) chosen.push(id);
   }
   return chosen;
 }
@@ -246,8 +245,7 @@ function writeInitTracker(raw: string, env: CliEnv): string | Error {
       ? (prior as { doc: string }).doc
       : undefined;
   existing.tracker = doc ? { value, doc } : { value };
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(existing, null, 2)}\n`, 'utf8');
+  writeConfig(file, existing);
   return `Set tracker to "${value}" in project config (${relative(env.cwd, file)}).`;
 }
 
@@ -266,6 +264,12 @@ function readConfigForWrite(file: string): Record<string, unknown> {
     return {};
   }
   return JSON.parse(raw) as Record<string, unknown>;
+}
+
+/** Write a config back as pretty JSON, creating its directory on the first write. */
+function writeConfig(file: string, config: Record<string, unknown>): void {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 }
 
 type Flag = 'help' | 'version' | 'json' | 'user';
