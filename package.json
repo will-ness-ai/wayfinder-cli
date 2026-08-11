@@ -2,6 +2,23 @@
   "name": "wayfinder-cli",
   "version": "0.1.0",
   "description": "A content-server CLI that renders planning skills as markdown for coding agents to read.",
+  "keywords": [
+    "cli",
+    "ai-agents",
+    "claude-code",
+    "planning",
+    "skills",
+    "issue-tracker"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/will-ness-ai/wayfinder-cli.git"
+  },
+  "homepage": "https://github.com/will-ness-ai/wayfinder-cli#readme",
+  "bugs": {
+    "url": "https://github.com/will-ness-ai/wayfinder-cli/issues"
+  },
   "type": "module",
   "bin": {
     "wayfinder": "dist/bin.js"
