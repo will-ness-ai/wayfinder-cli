@@ -1,132 +1,57 @@
 ---
-// Placeholder page. It proves the shell and the Pages pipeline, nothing more.
-// The locked design in docs/prototypes/docs-site/ replaces this page in
-// wayfinder ticket #49, together with the layout, the route sidebar, and the
-// terminal column.
-import { href } from '../lib/href';
+/**
+ * The landing page. Verdict 8 in docs/prototypes/docs-site/README.md.
+ *
+ * The second panel takes the accent border and tint, so the eye sees that half
+ * of the pitch is about extension, not complaint.
+ */
+import Page from '../layouts/Page.astro';
+import { HERO, INSTALL, HALVES, UPSTREAM } from '../data/landing';
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Scrollbars and form controls follow the theme, not the browser default. -->
-    <meta name="color-scheme" content="light dark" />
-    <link rel="canonical" href={new URL(href('/'), Astro.site)} />
-    <title>wayfinder-cli</title>
-    <meta
-      name="description"
-      content="Documentation for wayfinder-cli, a content-server CLI that renders planning skills as markdown for coding agents to read."
-    />
-  </head>
+<Page
+  current="overview"
+  title="wayfinder-cli"
+  description="A content-server CLI that renders planning skills as markdown for coding agents to read. Composed for your harness, substituted for your issue tracker, extended with the skills your team registered."
+>
+  <div class="hero">
+    <h1>{HERO.headline}</h1>
+    <p class="sub">{HERO.sub}</p>
 
-  <body>
-    <main>
-      <p class="eyebrow">Docs site &mdash; under construction</p>
+    <div class="installblock">{
+        INSTALL.map((command, n) => (
+          <>
+            <span class="p">$</span>{' '}
+            <span class="c">{command}</span>
+            {n < INSTALL.length - 1 ? '\n' : ''}
+          </>
+        ))
+      }</div>
 
-      <h1>wayfinder-cli</h1>
+    <div class="split2">
+      {
+        HALVES.map((half) => (
+          <div class:list={['panel', { add: half.index === '02' }]}>
+            <div class="hh">
+              <span class="ix">{half.index}</span>
+              <b>{half.title}</b>
+              <span class="nt">{half.note}</span>
+            </div>
+            {half.rows.map((row) => (
+              <div class="it">
+                <h4>{row.heading}</h4>
+                <p>{row.body}</p>
+              </div>
+            ))}
+          </div>
+        ))
+      }
+    </div>
 
-      <p class="lede">
-        A content-server CLI that renders planning skills as markdown for coding
-        agents to read.
-      </p>
-
-      <p>
-        The pages are being written. Until they land, the source, the install
-        instructions, and the v1 spec live in the repository.
-      </p>
-
-      <p>
-        <a href="https://github.com/will-ness-ai/wayfinder-cli"
-          >github.com/will-ness-ai/wayfinder-cli</a
-        >
-      </p>
-
-      <p class="note">
-        New to wayfinding? Start at
-        <a href="https://www.aihero.dev/skills-wayfinder">aihero.dev/skills-wayfinder</a>.
-        This site documents the CLI, not the method.
-      </p>
-    </main>
-  </body>
-</html>
-
-<style>
-  /* A deliberately small subset of the locked palette, so the placeholder reads
-     as the same product without pre-empting the design ticket. The full token
-     set, the three-state theme, and the grid arrive with the locked design. */
-  :root {
-    --bg: #f6f7f5;
-    --fg: #17191b;
-    --dim: #6e7377;
-    --faint: #9aa09c;
-    --accent: #1f7a6b;
-    --body: ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #121412;
-      --fg: #e4e7e2;
-      --dim: #8c938e;
-      --faint: #666c68;
-      --accent: #5fc4b0;
-    }
-  }
-
-  html {
-    background: var(--bg);
-  }
-
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: var(--body);
-    line-height: 1.6;
-  }
-
-  main {
-    max-width: 46rem;
-    padding: 12vh 1.5rem 4rem;
-    margin: 0 auto;
-  }
-
-  .eyebrow {
-    font: 10.5px/1 var(--mono);
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--faint);
-    margin: 0 0 1.5rem;
-  }
-
-  h1 {
-    font-size: clamp(2rem, 6vw, 3rem);
-    letter-spacing: -0.03em;
-    margin: 0 0 0.75rem;
-  }
-
-  .lede {
-    font-size: 1.15rem;
-    color: var(--dim);
-    margin: 0 0 2rem;
-  }
-
-  .note {
-    color: var(--dim);
-    font-size: 0.95rem;
-    margin-top: 3rem;
-  }
-
-  a {
-    color: var(--accent);
-    text-underline-offset: 3px;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-</style>
+    <p class="outlink">
+      New to wayfinding? This site documents the CLI, not the method — start at <a
+        href={UPSTREAM}>aihero.dev/skills-wayfinder</a
+      >.
+    </p>
+  </div>
+</Page>

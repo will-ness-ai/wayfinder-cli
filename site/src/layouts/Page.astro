@@ -1,0 +1,70 @@
+---
+/**
+ * The shell every page wears: the route, the top strip, the prose column, and
+ * — when the page has a terminal example — the third column.
+ *
+ * Three columns is the norm. A station with no entry in `terminalFor` gets
+ * two, and its content runs the full width of the middle column. That is how a
+ * rendered skill page is built: it is already terminal output, so a terminal
+ * beside it would be dead space. Verdict 3.
+ */
+import '../styles/site.css';
+import Route from '../components/Route.astro';
+import TopStrip from '../components/TopStrip.astro';
+import Terminal from '../components/Terminal.astro';
+import { terminalFor } from '../data/terminals';
+import { station } from '../lib/nav';
+import { href } from '../lib/href';
+
+interface Props {
+  /** Which station of the route this page is. Must exist in ROUTE. */
+  current: string;
+  /** The `<title>`. Defaults to the station label plus the product name. */
+  title?: string;
+  /** The meta description. Every page states its own. */
+  description: string;
+}
+
+const { current, title, description } = Astro.props;
+const { station: here, group } = station(current);
+const documentTitle = title ?? `${here.label} · wayfinder-cli`;
+const terminal = terminalFor(current);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="canonical" href={new URL(href(here.path), Astro.site)} />
+    <title>{documentTitle}</title>
+    <meta name="description" content={description} />
+
+    {/* No stamp on the root means the system setting decides. This runs before
+        the first paint, so an explicit choice never flashes the other theme.
+        Verdict 4. */}
+    <script is:inline>
+      try {
+        const choice = localStorage.getItem('wayfinder-theme');
+        if (choice === 'light' || choice === 'dark') {
+          document.documentElement.setAttribute('data-theme', choice);
+        }
+      } catch {
+        /* storage blocked — the system setting decides */
+      }
+    </script>
+  </head>
+
+  <body>
+    <div class:list={['page', { three: terminal }]}>
+      <Route current={current} />
+
+      <div class="col">
+        <TopStrip group={group} label={here.label} />
+        <main class="pad"><slot /></main>
+      </div>
+
+      {terminal && <Terminal label={terminal.label} lines={terminal.lines} />}
+    </div>
+  </body>
+</html>

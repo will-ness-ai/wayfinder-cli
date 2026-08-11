@@ -1,0 +1,718 @@
+/* =====================================================================
+   The locked design, as one stylesheet.
+
+   Ported from docs/prototypes/docs-site/prototype.html. Every value here
+   comes from that file; the README beside it holds the verdict behind each
+   rule. A framework default never overrules a verdict, and nothing in this
+   file changes the design on its own.
+
+   Only the accepted treatments are ported. The rejected ones — the in-page
+   contents list, the cheatsheet cards, the foldable stdout block, the index
+   beside the stdout — are listed in that README and are not here.
+
+   Fifteen pages share this file. astro.config.ts sets
+   `build.inlineStylesheets: 'never'`, so it is one cached request.
+   ===================================================================== */
+
+/* ---------- reset ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+}
+img,
+svg {
+  max-width: 100%;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+a {
+  color: inherit;
+}
+table {
+  border-collapse: collapse;
+}
+
+/* ---------- tokens ---------- */
+
+/* The complete light palette sits on bare `:root`, so it applies in the
+   un-stamped state. The dark tokens are then written TWICE — once for the
+   system setting, once for an explicit choice — because a colour defined only
+   inside a media block or a `[data-theme]` block does not apply when the root
+   carries no stamp. Verdict 4. */
+:root {
+  --body: ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  --bg: #f6f7f5;
+  --paper: #ffffff;
+  --fg: #17191b;
+  --dim: #6e7377;
+  --faint: #9aa09c;
+  --rule: #e2e4e0;
+  --hair: #edeeea;
+  --accent: #1f7a6b;
+  --soft: rgba(31, 122, 107, 0.11);
+  --code: #f0f2ee;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #121412;
+    --paper: #191c19;
+    --fg: #e4e7e2;
+    --dim: #8c938e;
+    --faint: #666c68;
+    --rule: #272b27;
+    --hair: #1f231f;
+    --accent: #5fc4b0;
+    --soft: rgba(95, 196, 176, 0.13);
+    --code: #101310;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #121412;
+  --paper: #191c19;
+  --fg: #e4e7e2;
+  --dim: #8c938e;
+  --faint: #666c68;
+  --rule: #272b27;
+  --hair: #1f231f;
+  --accent: #5fc4b0;
+  --soft: rgba(95, 196, 176, 0.13);
+  --code: #101310;
+}
+
+/* The terminal keeps ONE palette in both themes. A pale terminal in light mode
+   stops looking like output, and looking like output is the whole job.
+   Verdict 6. */
+:root {
+  --term: #0f1211;
+  --termfg: #d8dad6;
+  --termdim: #727a81;
+  --termrule: #222724;
+  --caret: #e4b429;
+  --tHead: #e4b429;
+  --tCode: #7fd2c2;
+  --tDim: #767e7a;
+}
+
+html {
+  background: var(--bg);
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  line-height: 1.6;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- the shell: prose with a terminal beside it ---------- */
+/* Verdict 1 and verdict 3. Three columns, but a skill page drops to two and
+   its output block runs full width. */
+
+.page {
+  display: grid;
+  grid-template-columns: 254px minmax(0, 1fr);
+  min-height: 100vh;
+}
+.page.three {
+  grid-template-columns: 254px minmax(0, 1fr) minmax(300px, 34%);
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pad {
+  padding: 32px 30px 110px;
+}
+
+/* ---------- the route ---------- */
+/* A vertical hairline with a dot per page. The current dot fills with the
+   accent and takes a halo. All 15 stations stay open. Verdict 2. */
+
+.side {
+  padding: 26px 20px 60px 26px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+  border-right: 1px solid var(--rule);
+  background: var(--bg);
+}
+.side .brand {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 2px;
+}
+.side .brand a {
+  text-decoration: none;
+}
+.side .ver {
+  font: 10.5px/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 28px;
+}
+.route {
+  position: relative;
+  padding-left: 19px;
+}
+.route::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--rule);
+}
+.route .grp {
+  font-size: 10px;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 22px 0 7px;
+}
+.route a,
+.route span {
+  display: block;
+  text-decoration: none;
+  font-size: 13.5px;
+  padding: 3px 0;
+  position: relative;
+  color: var(--dim);
+}
+.route a::before,
+.route span::before {
+  content: '';
+  position: absolute;
+  left: -19px;
+  top: 10px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+  background: var(--bg);
+}
+.route a:hover {
+  color: var(--fg);
+}
+.route a.on {
+  color: var(--accent);
+  font-weight: 600;
+}
+.route a.on::before {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--soft);
+}
+/* A station whose page is not built yet. Not a link, and it never hovers. */
+.route span {
+  color: var(--faint);
+  cursor: default;
+}
+
+/* ---------- the top strip ---------- */
+
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 46px;
+  padding: 0 26px;
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--bg);
+  font-size: 12.5px;
+  color: var(--dim);
+}
+.strip .crumb {
+  flex: 1;
+}
+.strip .crumb b {
+  color: var(--fg);
+  font-weight: 600;
+}
+.strip button {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-size: 11.5px;
+  color: var(--dim);
+  cursor: pointer;
+}
+.strip button:hover {
+  color: var(--fg);
+  border-color: var(--dim);
+}
+
+/* The theme name is written by CSS, not by script, so it is correct in the
+   first painted frame on every page. The head script stamps the root before
+   paint; these rules read that stamp. */
+.theme-name::after {
+  content: 'system';
+}
+:root[data-theme='light'] .theme-name::after {
+  content: 'light';
+}
+:root[data-theme='dark'] .theme-name::after {
+  content: 'dark';
+}
+
+/* ---------- prose ---------- */
+
+.md {
+  max-width: 66ch;
+}
+.md h1 {
+  font-size: 33px;
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+.md h2 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.016em;
+  margin: 42px 0 8px;
+  text-wrap: balance;
+  scroll-margin-top: 60px;
+}
+.md h3 {
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 28px 0 7px;
+  scroll-margin-top: 60px;
+}
+.md p,
+.md li {
+  font-size: 14.8px;
+  line-height: 1.68;
+}
+.md a {
+  color: var(--accent);
+  text-underline-offset: 3px;
+}
+.md code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: var(--code);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.md pre {
+  background: var(--term);
+  color: var(--termfg);
+  border-radius: 6px;
+  padding: 14px 16px;
+  font: 12.5px/1.6 var(--mono);
+  overflow-x: auto;
+}
+.md pre code {
+  background: none;
+  padding: 0;
+}
+.md blockquote {
+  margin: 0;
+  border-left: 3px solid var(--accent);
+  padding: 2px 0 2px 16px;
+  color: var(--dim);
+}
+/* `line-height: normal` is what the locked design shows. The prototype is one
+   standalone HTML file with no doctype, so it renders in quirks mode, where a
+   table does not inherit `line-height` from the body. This page declares a
+   doctype, so the table would inherit `1.6` and every row would grow by about
+   5px. The prototype declares no line-height on a table at all, so `normal` is
+   the locked value and it is stated here. Same for `.cheattable` below. */
+.md table {
+  font-size: 13.4px;
+  width: 100%;
+  line-height: normal;
+}
+.md th {
+  text-align: left;
+  font-size: 10.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 0 16px 6px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.md td {
+  padding: 7px 16px 7px 0;
+  border-bottom: 1px solid var(--hair);
+  vertical-align: top;
+}
+.tablewrap {
+  overflow-x: auto;
+}
+
+/* A page title that is not the first line of prose — the cheatsheet uses it. */
+.pagehead h1 {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  margin: 0 0 6px;
+  text-wrap: balance;
+}
+.pagehead p {
+  color: var(--dim);
+  margin: 0 0 24px;
+  max-width: 56ch;
+}
+
+/* ---------- the terminal column ---------- */
+/* Static: a fixed example per page. It does not follow the reader's scroll.
+   Verdict 6. */
+
+.term {
+  background: var(--term);
+  color: var(--termfg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.page.three > .term {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  border-left: 1px solid var(--rule);
+}
+.term .bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border-bottom: 1px solid var(--termrule);
+  font: 10.5px var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--termdim);
+  flex: none;
+}
+.term .bar .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2e3338;
+  flex: none;
+}
+.term .out {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 18px 48px;
+  font: 12.4px/1.66 var(--mono);
+  white-space: pre-wrap;
+  margin: 0;
+}
+.term .out .cmd {
+  color: var(--caret);
+}
+.term .out .cmd::before {
+  content: '$ ';
+  color: #4c555c;
+}
+.term .out .cm {
+  color: var(--termdim);
+}
+.term .out .ok {
+  color: #6fcf97;
+}
+
+/* ---------- the landing page ---------- */
+/* One oversized statement, the install block, then the pitch split 50/50 into
+   two bordered panels. The "adds" half takes the accent border and tint.
+   Verdict 8. */
+
+.hero h1 {
+  font-weight: 700;
+  letter-spacing: -0.038em;
+  line-height: 1.04;
+  margin: 6px 0 16px;
+  text-wrap: balance;
+  font-size: clamp(36px, 5.2vw, 58px);
+  max-width: 13ch;
+}
+.hero .sub {
+  color: var(--dim);
+  margin: 0 0 26px;
+  font-size: 17px;
+  max-width: 50ch;
+}
+/* The three commands run together on one wrapped line, because the block sets
+   no `white-space`. That is how the locked prototype renders; it is reproduced
+   here rather than corrected, and it is raised on the pull request. */
+.installblock {
+  background: var(--term);
+  color: var(--termfg);
+  border-radius: 8px;
+  padding: 16px 18px;
+  font: 13px/2 var(--mono);
+  margin-bottom: 34px;
+}
+.installblock .p {
+  color: #4c555c;
+}
+.installblock .c {
+  color: var(--caret);
+}
+
+.split2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 26px;
+  margin-bottom: 8px;
+}
+.panel {
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  padding: 18px 20px 6px;
+  background: var(--paper);
+}
+.panel.add {
+  border-color: var(--accent);
+  background: var(--soft);
+}
+.panel .it {
+  padding: 12px 0;
+  border-top: 1px solid var(--rule);
+}
+.panel.add .it {
+  border-top-color: rgba(31, 122, 107, 0.25);
+}
+.panel .hh {
+  padding-bottom: 8px;
+}
+.hh {
+  margin-bottom: 4px;
+}
+.hh .ix {
+  font: 10px var(--mono);
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 6px;
+}
+.hh b {
+  display: block;
+  font-size: 17px;
+  letter-spacing: -0.015em;
+  margin-bottom: 3px;
+}
+.hh .nt {
+  display: block;
+  font-size: 13px;
+  color: var(--dim);
+}
+.it h4 {
+  margin: 0 0 4px;
+  font-size: 14.2px;
+}
+.it p {
+  margin: 0;
+  font-size: 13.4px;
+  color: var(--dim);
+}
+.outlink {
+  margin-top: 34px;
+  font-size: 13.6px;
+  color: var(--dim);
+}
+.outlink a {
+  color: var(--accent);
+}
+
+/* ---------- the cheatsheet ---------- */
+/* One dense table, three columns, a rule and extra space per group. Cards were
+   prototyped and rejected. Verdict 9. */
+
+/* Density is the whole point of this page, and inheriting `1.6` would add a
+   quarter to every row. See the note on `.md table`. */
+.cheattable {
+  width: 100%;
+  font-size: 12.6px;
+  line-height: normal;
+}
+.cheattable th {
+  text-align: left;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 0 14px 5px 0;
+  border-bottom: 1px solid var(--fg);
+}
+.cheattable td {
+  padding: 4px 14px 4px 0;
+  border-bottom: 1px solid var(--hair);
+  vertical-align: top;
+}
+.cheattable td.k {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+.cheattable td.g {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.cheattable td.d {
+  color: var(--dim);
+}
+.cheattable tr.first td {
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+/* ---------- the stdout block ---------- */
+/* A skill page holds the verbatim bytes of `wayfinder skill <id>`: a fixture
+   line, a sticky header bar, line numbers, and markdown tinting. Verdict 5.
+   The block that fills these classes is built in wayfinder ticket #50. */
+
+.fixture {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  border-radius: 7px;
+  padding: 11px 15px;
+  font-size: 12.5px;
+  color: var(--dim);
+  margin: 0 0 16px;
+}
+.fixture code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+/* No `overflow: hidden` here. It makes the box its own scroll container, so
+   the sticky head stops tracking the viewport and paints over line 1. */
+.stdout {
+  background: var(--term);
+  color: var(--termfg);
+  border-radius: 7px;
+}
+.stdout .head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 15px;
+  border-bottom: 1px solid var(--termrule);
+  font: 10.5px var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--termdim);
+  position: sticky;
+  top: 46px;
+  background: var(--term);
+  z-index: 4;
+  border-radius: 7px 7px 0 0;
+}
+.stdout .head .grow {
+  flex: 1;
+}
+.stdout .head button {
+  background: none;
+  border: 1px solid var(--termrule);
+  border-radius: 4px;
+  color: var(--termdim);
+  font: 10px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.stdout .head button:hover {
+  color: var(--termfg);
+  border-color: var(--termdim);
+}
+.stdout .tHead {
+  color: var(--tHead);
+}
+.stdout .tCode {
+  color: var(--tCode);
+}
+.stdout .tDim {
+  color: var(--tDim);
+}
+.stdout .numbered {
+  padding: 14px 0 30px;
+  border-radius: 0 0 7px 7px;
+  font: 12.4px/1.66 var(--mono);
+}
+.stdout .numbered .l {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+}
+.stdout .numbered .l > i {
+  font-style: normal;
+  color: #454c48;
+  text-align: right;
+  padding-right: 14px;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+.stdout .numbered .l > span {
+  white-space: pre-wrap;
+  padding-right: 20px;
+}
+
+/* ---------- responsive ---------- */
+/* Below 1100px the third column moves under the prose. Below 860px the grid
+   collapses to one column. */
+
+@media (max-width: 1100px) {
+  .page.three {
+    grid-template-columns: 254px minmax(0, 1fr);
+  }
+  .page.three > .term {
+    position: static;
+    height: 300px;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+}
+@media (max-width: 860px) {
+  .page,
+  .page.three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .side {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 24px;
+  }
+  .pad {
+    padding: 24px 20px 90px;
+  }
+}

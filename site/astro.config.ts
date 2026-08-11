@@ -7,6 +7,9 @@ import { defineConfig } from 'astro/config';
 //
 // Astro does NOT rewrite hand-written internal links. Every `<a href>` in this
 // site must go through the `href()` helper in `src/lib/href.ts`.
+//
+// There is no `markdown` block, because every page is an `.astro` file. See
+// "Why no Markdown pages" in README.md.
 export default defineConfig({
   site: 'https://will-ness-ai.github.io',
   base: '/wayfinder-cli',

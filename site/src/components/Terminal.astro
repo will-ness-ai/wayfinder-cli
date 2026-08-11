@@ -1,0 +1,26 @@
+---
+/**
+ * The third column: a terminal showing the output of the commands the prose
+ * describes. It is what makes this site different from a generic docs theme —
+ * the product is a program that prints things, so the site shows what it
+ * prints, on every page. Verdict 1.
+ *
+ * The example is static: it does not follow the reader's scroll. Verdict 6.
+ * The palette stays dark in both themes.
+ */
+import type { TerminalExample } from '../data/terminals';
+
+interface Props extends TerminalExample {}
+
+const { label, lines } = Astro.props;
+---
+
+<div class="term">
+  <div class="bar"><span class="dot"></span>{label}</div>
+  {/* One span per line, each followed by its own newline. `.term .out` sets
+      `white-space: pre-wrap`, so the newlines are the line breaks and an empty
+      line is a bare newline. The expression escapes the text for us. */}
+  <div class="out">{
+      lines.map(([kind, text]) => (text === '' ? '\n' : [<span class={kind}>{text}</span>, '\n']))
+    }</div>
+</div>

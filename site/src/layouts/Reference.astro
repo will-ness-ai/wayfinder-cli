@@ -1,0 +1,28 @@
+---
+/**
+ * The layout a reference page wears: prose in the middle column, a terminal in
+ * the third.
+ *
+ * A reference page carries no in-page contents list. The four reference pages
+ * are short enough to scroll, and a contents list would take the column the
+ * terminal earns. Verdict 7.
+ *
+ * The slot is the prose. Write it as ordinary HTML — `.md` in
+ * src/styles/site.css styles every element of it, and a wide table goes in
+ * `<div class="tablewrap">` so it scrolls instead of pushing the page sideways.
+ */
+import Page from './Page.astro';
+
+interface Props {
+  /** The station id in src/lib/nav.ts. */
+  current: string;
+  /** The meta description. */
+  description: string;
+}
+
+const { current, description } = Astro.props;
+---
+
+<Page current={current} description={description}>
+  <div class="md"><slot /></div>
+</Page>

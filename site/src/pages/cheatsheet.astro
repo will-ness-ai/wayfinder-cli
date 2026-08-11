@@ -1,0 +1,42 @@
+---
+/**
+ * The cheatsheet. One dense table, three columns, a rule and extra space to
+ * open each group. Verdict 9.
+ */
+import Page from '../layouts/Page.astro';
+import { CHEATSHEET } from '../data/cheatsheet';
+---
+
+<Page
+  current="cheatsheet"
+  description="Every wayfinder-cli command, flag, config key, config scope, tracker value, skill id, and ticket label, on one page."
+>
+  <div class="pagehead">
+    <h1>Cheatsheet</h1>
+    <p>
+      Every command, every flag, every config key, and the six tracker values. One screen, for a
+      human eye.
+    </p>
+  </div>
+
+  <div class="tablewrap">
+    <table class="cheattable">
+      <thead>
+        <tr><th>Group</th><th>Item</th><th>Meaning</th></tr>
+      </thead>
+      <tbody>
+        {
+          CHEATSHEET.flatMap((group) =>
+            group.rows.map(([item, meaning], n) => (
+              <tr class:list={[{ first: n === 0 }]}>
+                <td class="g">{n === 0 ? group.title : ''}</td>
+                <td class="k">{item}</td>
+                <td class="d">{meaning}</td>
+              </tr>
+            )),
+          )
+        }
+      </tbody>
+    </table>
+  </div>
+</Page>
