@@ -3,7 +3,9 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'test/**/__snapshots__/**'],
+    // `site/` is a standalone project with its own toolchain — it is not part
+    // of the published package, and `astro check` lints it there.
+    ignores: ['dist/**', 'node_modules/**', 'test/**/__snapshots__/**', 'site/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
