@@ -92,3 +92,29 @@ _Avoid_: tracker slot, substitution block
 **Notice-and-ask block**:
 The tracker block when config holds no tracker value. It reports the gap and asks the human to choose. It never stops with an error, and it never picks a tracker on its own.
 _Avoid_: fallback, default tracker
+
+### Docs site
+
+**Docs site**:
+The public site for wayfinder-cli, deployed to GitHub Pages. It serves a human who already knows wayfinder and now wants to install and operate the CLI. A reader who does not know the method goes to the upstream docs.
+_Avoid_: website, homepage, docs
+
+**Landing page**:
+The first page of the docs site: what the CLI does, the install commands, a short quickstart, and the link out to the upstream wayfinder docs.
+_Avoid_: home, index
+
+**Reference page**:
+One page of the docs site's reference section — commands, config, trackers, or ticket skills. Prose, tables, and code blocks, written by hand from the spec and from the working CLI.
+_Avoid_: docs page, guide
+
+**Cheatsheet**:
+One dense scan page that holds every command, flag, config key, and tracker value in a single grid. It serves a reader who wants to copy a line, not read an explanation. It is not printable output, and it is not a paste block for an agent.
+_Avoid_: quick reference, summary
+
+**Rendered skill page**:
+A docs site page that holds the stdout of `wayfinder skill <id>`, never the source file under `content/skills/`. It shows the reader exactly what an agent receives.
+_Avoid_: skill doc, source page
+
+**Fixture config**:
+The fixed config the docs site build uses to produce every rendered skill page: tracker value `github cli`, plus example registered ticket skills. Each rendered skill page states the fixture that produced it.
+_Avoid_: demo config, sample config
