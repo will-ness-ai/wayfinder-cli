@@ -4,6 +4,8 @@ Prototype for the map ticket [Design the docs site look](https://github.com/will
 
 **Status: locked.** Four rounds of prototypes, each round one level further down the design tree. Every page in [prototype.html](prototype.html) now shows the accepted design.
 
+The rounds ran under the `grill-design` skill. That skill was named `grilling-frontend-prototyping` while this ticket was open, and the ticket body used the old name.
+
 This file is the **specification** that [Choose the site framework](https://github.com/will-ness-ai/wayfinder-cli/issues/47) and [Apply the locked design](https://github.com/will-ness-ai/wayfinder-cli/issues/49) build against. A framework theme never overrules a verdict below.
 
 ## The file
