@@ -1,0 +1,62 @@
+name: Site check
+
+# The gate in front of Pages. `pages.yml` builds `site/` only after a push
+# lands on `main`, so a broken build shows up after the merge — and `main`
+# keeps serving the last good deploy while it is broken. This workflow runs the
+# same install and build on the pull request instead.
+#
+# It uploads no artifact and it deploys nothing, so it needs no Pages
+# permission and it stays out of the `pages` concurrency group.
+#
+# It also runs `pnpm check`, which the deploy does not. `astro check` is the
+# site's only lint — the root ESLint config ignores `site/**`. The gate is
+# stricter than the deploy on purpose: a type error must stop a pull request,
+# and it must never stop a deploy of `main`.
+#
+# There is no `paths:` filter. The site builds its skill pages from the CLI
+# render, so a change under `src/` or `content/` can break the site build too.
+# A filter on `site/**` would miss that break, and it would miss it silently —
+# which is the failure this workflow exists to remove.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+# Nothing here is deployed, so a new push to the branch replaces the run in
+# flight. This is the opposite of the `pages` group in `pages.yml`, which
+# queues instead of cancelling.
+concurrency:
+  group: site-check-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: site
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      # Astro needs an even-numbered Node >= 22.12. Keep this pin equal to the
+      # one in `pages.yml`: the gate must build on the runtime that deploys.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check
+        run: pnpm check
+
+      - name: Build
+        run: pnpm build
+        env:
+          ASTRO_TELEMETRY_DISABLED: '1'
