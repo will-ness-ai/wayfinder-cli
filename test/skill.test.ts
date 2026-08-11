@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { runCli } from './fixtures/runCli.js';
-import { registry, served } from '../src/registry.js';
+import { served } from '../src/registry.js';
 
 describe('wayfinder skill <id>', () => {
   for (const entry of served) {
@@ -106,8 +106,11 @@ describe('wayfinder skill <id>', () => {
       });
     }
 
-    it('keeps the leaves off the `wayfinder skills` listing', () => {
-      const listedIds = registry.map((entry) => entry.id);
+    it('keeps the leaves off the `wayfinder skills` listing', async () => {
+      const { stdout } = await runCli(['skills', '--json']);
+      const listedIds = (JSON.parse(stdout) as { skills: Array<{ id: string }> }).skills.map(
+        (row) => row.id,
+      );
       for (const id of leafIds) {
         expect(listedIds).not.toContain(id);
       }

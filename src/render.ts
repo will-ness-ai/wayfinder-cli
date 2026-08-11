@@ -79,7 +79,10 @@ function demoteHeadings(body: string): string {
 function childrenBlock(childIds: string[]): string {
   const rows = childIds.map((id) => {
     const child = findSkill(id);
-    return `- \`wayfinder skill ${id}\` — when ${child?.when ?? ''}`;
+    if (!child) {
+      throw new Error(`Children block points at unknown child "${id}".`);
+    }
+    return `- \`wayfinder skill ${id}\` — when ${child.when ?? ''}`;
   });
   return ['## Disclosed files', '', ...rows].join('\n');
 }
