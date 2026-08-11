@@ -1,8 +1,15 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, relative } from 'node:path';
 import { encode } from '@toon-format/toon';
 import { resolveConfig, scopeFiles, type Scope } from './config.js';
 import type { CliEnv, CliResult } from './env.js';
+import {
+  buildStub,
+  HARNESS_IDS,
+  lineDiff,
+  stubPath,
+  type HarnessId,
+} from './init.js';
 import { findSkill, registry } from './registry.js';
 import { listingFor, renderSkill } from './render.js';
 import { readVersion } from './version.js';
@@ -29,6 +36,8 @@ export async function run(argv: string[], env: CliEnv): Promise<CliResult> {
       return skillsCommand(parsed.flags.has('json'));
     case 'tracker':
       return trackerCommand(parsed, env);
+    case 'init':
+      return initCommand(parsed, env);
     default:
       return usageError(
         `Unknown command "${command}". Run \`wayfinder --help\` to see what is served.`,
@@ -119,6 +128,130 @@ function trackerSet(parsed: ParsedArgv, env: CliEnv): CliResult {
 }
 
 /**
+ * `wayfinder init [--harness <ids>] [--tracker <value>]`. It writes exactly one
+ * stub skill per selected harness — never one per served skill — so a skill the
+ * human keeps installed is never overwritten. `init` is the only writer of the
+ * stub: `tracker set` and every registration mutation leave it alone. A second
+ * run repairs a damaged stub and reports a diff of what it changed.
+ *
+ * The interactive form runs at the process boundary on a TTY and folds its
+ * answers back into `--harness`, so `run` stays a pure, flag-driven transform.
+ * With no `--harness` and no TTY this is a usage error that names the flag.
+ */
+function initCommand(parsed: ParsedArgv, env: CliEnv): CliResult {
+  const harnesses = parseHarnesses(parsed.options.harness);
+  if (harnesses instanceof Error) return usageError(harnesses.message);
+
+  const reports: string[] = [];
+
+  if (parsed.options.tracker !== undefined) {
+    const trackerReport = writeInitTracker(parsed.options.tracker, env);
+    if (trackerReport instanceof Error) return usageError(trackerReport.message);
+    reports.push(trackerReport);
+  }
+
+  const stub = buildStub();
+  for (const harness of harnesses) {
+    reports.push(writeStub(stub, stubPath(env, harness), env.cwd));
+  }
+  reports.push('Next: have your agent run `wayfinder skill wayfinder`.');
+  return ok(`${reports.join('\n')}\n`);
+}
+
+/**
+ * Parse the `--harness` flag into a de-duplicated list of valid install targets.
+ * A missing flag or an unknown id is a usage error that names the flag, describes
+ * a good value, and shows one example — the dual-mode style setup commands share.
+ */
+function parseHarnesses(flag: string | undefined): HarnessId[] | Error {
+  const ids = (flag ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => id !== '');
+  if (ids.length === 0) return new Error(HARNESS_USAGE);
+
+  const chosen: HarnessId[] = [];
+  for (const id of ids) {
+    if (!(HARNESS_IDS as string[]).includes(id)) {
+      return new Error(
+        `Unknown harness "${id}". Valid install targets are ${HARNESS_IDS.join(', ')}.\n\n` +
+          '  wayfinder init --harness claude,agents',
+      );
+    }
+    const harness = id as HarnessId;
+    if (!chosen.includes(harness)) chosen.push(harness);
+  }
+  return chosen;
+}
+
+const HARNESS_USAGE =
+  'init needs at least one harness to install the stub into.\n' +
+  '--harness <ids>  The agent harnesses to write the stub into, comma-separated.\n' +
+  '                 Valid ids: claude (.claude/skills/), agents (.agents/skills/).\n\n' +
+  'For example:\n\n' +
+  '  wayfinder init --harness claude,agents\n\n' +
+  'Or run it on a terminal with no flags to pick the harnesses interactively.';
+
+/**
+ * Write the stub to one harness, and report what happened. A first write reports
+ * the new file; an identical stub reports no change; a differing stub is repaired
+ * and its line diff reported, so a repair never writes silently.
+ */
+function writeStub(stub: string, path: string, cwd: string): string {
+  const rel = relative(cwd, path);
+  let existing: string | undefined;
+  try {
+    existing = readFileSync(path, 'utf8');
+  } catch {
+    existing = undefined;
+  }
+
+  if (existing === stub) return `${rel} is already up to date.`;
+
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, stub, 'utf8');
+
+  if (existing === undefined) return `Wrote ${rel} (new stub).`;
+  const diff = lineDiff(existing, stub)
+    .map((line) => `  ${line}`)
+    .join('\n');
+  return `Repaired ${rel}:\n${diff}`;
+}
+
+/**
+ * `--tracker <value>` records the tracker in project config, the same write the
+ * interactive form's tracker question performs. It stores the value only; `--doc`
+ * is `tracker set`'s job. A malformed config is refused rather than clobbered.
+ */
+function writeInitTracker(raw: string, env: CliEnv): string | Error {
+  const value = raw.trim();
+  if (value === '') {
+    return new Error(
+      'init --tracker needs a value: name your issue tracker, lower case.\n\n' +
+        '  wayfinder init --harness claude --tracker "github cli"',
+    );
+  }
+  const file = scopeFiles(env).project;
+  let existing: Record<string, unknown>;
+  try {
+    existing = readConfigForWrite(file);
+  } catch {
+    return new Error(`The project config at ${file} is not valid JSON. Fix it before running init.`);
+  }
+  // Store the value only, but preserve a doc a prior `tracker set --doc` attached:
+  // recording the tracker here must never silently drop the developer's doc path.
+  const prior = existing.tracker;
+  const doc =
+    prior && typeof prior === 'object' && typeof (prior as { doc?: unknown }).doc === 'string'
+      ? (prior as { doc: string }).doc
+      : undefined;
+  existing.tracker = doc ? { value, doc } : { value };
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(existing, null, 2)}\n`, 'utf8');
+  return `Set tracker to "${value}" in project config (${relative(env.cwd, file)}).`;
+}
+
+/**
  * Read the config to write into, preserving every other key. A missing file is
  * the normal first write and starts from empty; a file that exists but is
  * malformed throws, so a set never silently clobbers `ticketSkills` or a doc.
@@ -139,19 +272,20 @@ type Flag = 'help' | 'version' | 'json' | 'user';
 
 export interface ParsedArgv {
   flags: Set<Flag>;
-  options: { doc?: string };
+  options: { doc?: string; harness?: string; tracker?: string };
   positionals: string[];
 }
 
 /**
- * Parse an argv into flags, options, and positionals. The one flag vocabulary:
- * `--doc` consumes the next word, `--user` is boolean, everything else is a
- * positional. The process boundary shares this parser (see `bin.ts`), so its
- * read of a command can never drift from the one {@link run} acts on.
+ * Parse an argv into flags, options, and positionals. The flag vocabulary:
+ * `--doc`, `--harness`, and `--tracker` each consume the next word, `--user` is
+ * boolean, everything else is a positional. The process boundary shares this
+ * parser (see `bin.ts`), so its read of a command can never drift from the one
+ * {@link run} acts on.
  */
 export function parseArgv(argv: string[]): ParsedArgv {
   const flags = new Set<Flag>();
-  const options: { doc?: string } = {};
+  const options: ParsedArgv['options'] = {};
   const positionals: string[] = [];
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -173,6 +307,14 @@ export function parseArgv(argv: string[]): ParsedArgv {
       case '--doc':
         i += 1;
         if (argv[i] !== undefined) options.doc = argv[i];
+        break;
+      case '--harness':
+        i += 1;
+        if (argv[i] !== undefined) options.harness = argv[i];
+        break;
+      case '--tracker':
+        i += 1;
+        if (argv[i] !== undefined) options.tracker = argv[i];
         break;
       default:
         if (arg !== undefined) positionals.push(arg);

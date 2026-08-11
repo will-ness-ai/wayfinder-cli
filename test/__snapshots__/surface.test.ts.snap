@@ -25,6 +25,10 @@ USAGE
   wayfinder skills         List every skill served, with its description and children.
 
 SETUP
+  wayfinder init                       Install the entry-point stub into your agent harnesses.
+    [--harness <ids>] [--tracker ...]  Runs a form on a terminal; takes flags with no TTY.
+                                       --harness is claude, agents, or both, comma-separated.
+                                       Idempotent: a re-run repairs the stub and reports a diff.
   wayfinder tracker show               Report the effective tracker and the scope it came from.
   wayfinder tracker set [<value>]      Record this repo's issue tracker. Runs a form on a
     [--doc <path>] [--user]            terminal; takes flags with no TTY. --doc attaches an
