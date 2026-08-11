@@ -17,7 +17,7 @@ import { findSkill, registry } from './registry.js';
 import { listingFor, renderSkill } from './render.js';
 import { trackerDocProblem } from './tracker.js';
 import { readVersion } from './version.js';
-import { help, quickstart } from './text.js';
+import { help } from './text.js';
 
 /**
  * The CLI entry point and the single test seam. It never touches `process`: it
@@ -30,8 +30,11 @@ export async function run(argv: string[], env: CliEnv): Promise<CliResult> {
   if (parsed.flags.has('help')) return ok(help);
   if (parsed.flags.has('version')) return ok(`${readVersion()}\n`);
 
+  // Bare `wayfinder` is an agent's first call, so it renders the wayfinder skill
+  // rather than a page that tells the agent to call again. `--help` keeps the
+  // developer's page, so the two audiences still read their own text.
   const command = parsed.positionals[0];
-  if (command === undefined) return ok(quickstart);
+  if (command === undefined) return renderCommand('wayfinder', env);
 
   switch (command) {
     case 'skill':

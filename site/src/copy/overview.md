@@ -18,8 +18,8 @@ install:
     note: Install once, for every repo on the machine. A Homebrew tap ships the same build.
   - command: wayfinder init
     note: Writes one stub skill per agent harness, and records your issue tracker.
-  - command: wayfinder skill wayfinder
-    note: Your agent runs this. Everything else follows from the render.
+  - command: wayfinder
+    note: Your agent runs this. It prints the wayfinder skill, and the rest follows.
 
 panels:
   - title: What it removes
@@ -85,27 +85,15 @@ terminal:
     - kind: out
       text: ""
     - kind: cmd
-      text: wayfinder
+      text: "wayfinder | grep '^## '"
     - kind: out
-      text: wayfinder — planning skills, served as markdown for coding agents.
+      text: "## Fog of war"
     - kind: out
-      text: ""
+      text: "## Out of scope"
     - kind: out
-      text: "Your next action MUST be to run:"
+      text: "## Invocation"
     - kind: out
-      text: ""
-    - kind: out
-      text: "  wayfinder skill wayfinder"
-    - kind: out
-      text: ""
-    - kind: out
-      text: "That prints the wayfinder skill in full. Then:"
-    - kind: out
-      text: ""
-    - kind: out
-      text: "  wayfinder skill <id>   Print one skill, rendered as markdown."
-    - kind: out
-      text: "  wayfinder skills       List every skill served, with its children."
+      text: "## Issue tracker: github cli"
 ---
 
 `wayfinder` is a content server. It installs once per repo and prints planning

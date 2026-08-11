@@ -1,26 +1,8 @@
-/**
- * The agent quickstart, printed by bare `wayfinder`. Two read commands and the
- * start line — the whole agent surface, and nothing a human sets up.
- */
-export const quickstart = `wayfinder — planning skills, served as markdown for coding agents.
-
-Your next action MUST be to run:
-
-  wayfinder skill wayfinder
-
-That prints the wayfinder skill in full. Then:
-
-  wayfinder skill <id>   Print one skill, rendered as markdown.
-  wayfinder skills       List every skill served, with its children.
-
-Run \`wayfinder --help\` for the developer setup page.
-`;
-
 /** The developer setup page, printed by `wayfinder --help`: the whole surface, read and setup. */
 export const help = `wayfinder — a content server that renders planning skills for coding agents.
 
 USAGE
-  wayfinder                Print the agent quickstart.
+  wayfinder                Print the wayfinder skill, the agent's entry point.
   wayfinder skill <id>     Print one skill, rendered as markdown.
   wayfinder skills         List every skill served, with its description and children.
 
