@@ -258,7 +258,12 @@ body {
   color: var(--fg);
   font-weight: 600;
 }
-.strip button {
+/* The source link has no value of its own in the prototype: the locked design
+   shows the theme control alone, and wayfinder ticket #63 ruled the link in
+   without amending it. So it takes the theme button's own tokens, and the two
+   read as a pair at the end of the row. */
+.strip button,
+.strip .source {
   background: none;
   border: 1px solid var(--rule);
   border-radius: 5px;
@@ -267,9 +272,26 @@ body {
   color: var(--dim);
   cursor: pointer;
 }
-.strip button:hover {
+.strip button:hover,
+.strip .source:hover {
   color: var(--fg);
   border-color: var(--dim);
+}
+
+/* An icon is a replaced element, so nothing inside the link sets a line box the
+   way the button's text does. `1.6em` is the line-height the button inherits
+   from `body`, at the font size above; the 8px is the padding and the border
+   the rule above adds, which `box-sizing: border-box` counts inside a height.
+   Together they hold the two controls at one height, and the strip at 46px. */
+.strip .source {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(1.6em + 8px);
+}
+.strip .source svg {
+  display: block;
+  width: 14px;
+  height: 14px;
 }
 
 /* The theme name is written by CSS, not by script, so it is correct in the
