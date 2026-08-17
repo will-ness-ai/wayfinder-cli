@@ -1,68 +1,161 @@
 name: Release
 
-# Releases are tag-driven and on demand. A maintainer runs `npm version <bump>`
-# on the default branch and `git push --follow-tags`; the pushed `v*` tag runs
-# the whole sequence below. Nothing here is left to memory.
+# Releases are changeset-driven. A pull request that changes the package carries
+# a changeset; merging it to `main` runs this workflow, which opens or updates a
+# "Version Packages" pull request. Merging *that* one publishes.
+#
+# The tag is an output of the release, not its trigger. `changesets/action/publish`
+# creates it, and a tag created with `GITHUB_TOKEN` starts no workflow run — so a
+# `push: tags` trigger here would never fire. The publish happens inside this run
+# instead.
+#
+# The job split is npm's recommended shape for trusted publishing: `id-token: write`
+# is granted to the publish job alone, and no other job can mint a registry
+# credential. `pack` builds the tarball; `publish` uploads what `pack` produced.
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
-permissions:
-  contents: write # create the GitHub Release
-  id-token: write # OIDC for npm trusted publishing and --provenance
+permissions: {}
+
+# A second push to `main` while a release is in flight must queue, never cancel:
+# a half-finished publish is worse than a slow one.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  release:
+  # Reads `.changeset/` and decides which half of this workflow runs. `version`
+  # when changesets are waiting, `publish` when the Version Packages pull request
+  # has just landed, and neither when the merge carried no changeset at all.
+  select-mode:
     runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
+      publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: changesets/action/select-mode@v2
+        id: select-mode
 
+  version:
+    if: needs.select-mode.outputs.mode == 'version'
+    needs: select-mode
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - uses: changesets/action/version@v2
+        id: version
+
+  # The gate the pipeline never had. Until this job existed a red snapshot suite
+  # published to npm, and the snapshots hold the bytes of every skill render —
+  # the product itself. It sits in front of `pack`, so nothing is built from a
+  # tree that does not pass.
+  pack:
+    if: needs.select-mode.outputs.mode == 'publish'
+    needs: select-mode
+    runs-on: ubuntu-latest
+    outputs:
+      pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - uses: changesets/action/pack@v2
+        id: pack
+        with:
+          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
+
+  publish:
+    needs: pack
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+      published-packages: ${{ steps.publish.outputs.published-packages }}
+    permissions:
+      contents: write # create the git tag and the GitHub Release
+      id-token: write # OIDC, which is how npm proves the tarball is ours
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-          cache: pnpm
+      - run: pnpm install --frozen-lockfile
 
       # Trusted publishing needs a recent npm CLI; Node 22 ships an older one.
       - name: Update npm
         run: npm install --global npm@latest
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      # Trusted publishing (OIDC): no NODE_AUTH_TOKEN and no stored npm token.
-      # npm mints a short-lived credential from the id-token permission above,
-      # and --provenance attaches a build attestation a consumer can verify.
-      - name: Publish to npm
-        run: npm publish --provenance --access public
-
-      - name: Create GitHub Release
+      # Trusted publishing generates provenance on its own. Setting it here keeps
+      # the attestation if the trusted-publisher configuration is ever lost.
+      - uses: changesets/action/publish@v2
+        id: publish
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" --generate-notes
+          NPM_CONFIG_PROVENANCE: 'true'
+        with:
+          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
 
-      # A silently lagging tap is the most likely failure in this design, so the
-      # bump runs here, not by hand. HOMEBREW_TAP_TOKEN is a fine-grained token
-      # scoped to the tap repo with contents-write, the pipeline's only
-      # long-lived credential.
-      #
-      # The tap is a second distribution channel, not a gate on the first: until
-      # HOMEBREW_TAP_TOKEN exists, a release still publishes to npm and this step
-      # reports the gap in the job summary instead of failing a good release. The
-      # guard is on the secret's absence alone — once the tap is configured, a
-      # bump that fails still fails the release, which is the point.
+  # A silently lagging tap is the most likely failure in this design, so the bump
+  # runs here, not by hand. It reads the version from what npm actually accepted,
+  # never from `package.json`, so it cannot bump the tap to a version that failed
+  # to publish.
+  #
+  # The tap is a second channel, not a gate on the first: with HOMEBREW_TAP_TOKEN
+  # absent, the step reports the gap and leaves the release green.
+  tap:
+    if: needs.publish.outputs.published == 'true'
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Bump Homebrew tap formula
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ fromJSON(needs.publish.outputs.published-packages)[0].version }}
         run: |
           if [ -z "${GH_TOKEN}" ]; then
             echo "::notice::Homebrew tap not configured — set HOMEBREW_TAP_TOKEN to enable the formula bump. The npm release is unaffected."
             exit 0
           fi
-          ./scripts/bump-tap.sh "${GITHUB_REF_NAME}"
+          ./scripts/bump-tap.sh "v${VERSION}"
