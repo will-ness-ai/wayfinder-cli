@@ -5,7 +5,16 @@ export default tseslint.config(
   {
     // `site/` is a standalone project with its own toolchain — it is not part
     // of the published package, and `astro check` lints it there.
-    ignores: ['dist/**', 'node_modules/**', 'test/**/__snapshots__/**', 'site/**'],
+    // `.claude/worktrees/` holds whole checkouts of this repo on a developer's
+    // machine. Linting them reports every finding a second time, and `pnpm lint`
+    // is now a release gate a human runs before opening a pull request.
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'test/**/__snapshots__/**',
+      'site/**',
+      '.claude/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

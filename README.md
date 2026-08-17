@@ -34,23 +34,31 @@ Skill content is forked and adapted from
 
 ## Releasing
 
-For maintainers. Releases are tag-driven and on demand: push a version tag, and
-CI does the rest. Decided in
+For maintainers. Releases are changeset-driven. Distribution was decided in
 [Distribution mechanics (#14)](https://github.com/will-ness-ai/wayfinder-cli/issues/14).
 
-To cut a release:
+A change that reaches the package carries a changeset:
 
-1. On `main`, run `npm version <major|minor|patch>`. This bumps `package.json`
-   and creates the `v*` tag.
-2. Push the commit and the tag: `git push --follow-tags`.
-3. CI takes over on the `v*` tag. It builds, publishes `wayfinder-cli` to npm
-   through trusted publishing with provenance (no stored npm token), creates
-   the GitHub Release with generated notes, then bumps the Homebrew tap formula
-   to the new tarball URL and checksum.
+```sh
+pnpm changeset
+```
+
+Merging it opens a *Version Packages* pull request. Merging that one publishes:
+CI runs the checks, builds, publishes `wayfinder-cli` to npm through trusted
+publishing with provenance (no stored npm token), tags the commit, creates the
+GitHub Release from the changelog entry, then bumps the Homebrew tap formula to
+the new tarball URL and checksum.
+
+Nobody types a version. A pull request that changes only `site/`, `docs/`, or
+`.github/` carries no changeset and triggers no release.
+
+[docs/release-system.md](docs/release-system.md) holds the rules: what the
+public API is, which change earns which bump, how prereleases work, and how to
+roll one back. The steps are the [`cut-a-release`](.claude/skills/cut-a-release/SKILL.md)
+skill.
 
 CI is the only publisher. The bootstrap publish that first created the package
-on npm has run, and trusted publishing is enabled, so every release from here
-goes through the tag flow above.
+on npm has run, and trusted publishing is enabled.
 
 The tap formula wraps the published npm tarball (`depends_on "node"` plus
 `std_npm_args`), so it always installs exactly what CI published. The release

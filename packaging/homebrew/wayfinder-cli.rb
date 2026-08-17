@@ -1,8 +1,8 @@
 require "language/node"
 
-# The canonical tap formula, mirrored into will-ness-ai/homebrew-tap by the
-# release workflow. It wraps the published npm tarball, so npm stays the single
-# source of truth and a release changes exactly two lines: `url` and `sha256`.
+# The seed the will-ness-ai/homebrew-tap formula was created from. The live
+# formula is in the tap; scripts/bump-tap.sh rewrites that clone alone, so the
+# `url` and `sha256` below stay at the seeded values.
 class WayfinderCli < Formula
   desc "CLI that renders planning skills as markdown for coding agents"
   homepage "https://github.com/will-ness-ai/wayfinder-cli"
